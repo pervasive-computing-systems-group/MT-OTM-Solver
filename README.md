@@ -10,14 +10,15 @@ Go to https://www.gurobi.com/academia/academic-program-and-licenses/, download t
 #### To Build Gurobi C++ Library
 Follow these directions: https://stackoverflow.com/a/48867074
 
-### Build the LKH Solver
+### Get LKH Solver
 
-From the MT-SAR-Solver project root directory,:
+Go to http://webhotel4.ruc.dk/~keld/research/LKH-3/, download the latest version,
+build the solver, then move the solver executable to 
+`~/bin`
 
-`cd test/LKH-3.0.6/`
+Add the following line to your .bashrc file:
 
-`make`
-
+`export PATH="/home/$USER/bin:$PATH"`
 
 ## To Generate Test Plots
 Open test/plotGenerator.py. At the top of the script are various parameters that should be set in order to configure the generated plots. Take note of FILE_PATH as this is needed to run the program in the steps below.
