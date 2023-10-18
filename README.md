@@ -1,4 +1,4 @@
-# MT-SAR-Solver
+# MT-OTM-Solver
 
 This code can be used to solve the Minimum-Time problems. See below for how to build and run the code.
 
@@ -25,14 +25,16 @@ Open test/plotGenerator.py. At the top of the script are various parameters that
 
 Run test/plotGenerator.py. The generated plots should now show up in the designated file path.
 
-## To Build & Run MT-SAR-Solver
+## To Build & Run MT-OTM-Solver
 Create a new directory from the root directory to run build commands
 
 `mkdir build`
 
-`cd build`
+We use cmake to build the MT-OTM-Solver. Cmake uses the `FindGUROBI.cmake` file to find the Gurobi solver library and link it with our solver during the build. You may need to update what Gurobi version you are using in `FindGUROBI.cmake`, specifically on the line that says something like "NAMES gurobi gurobi95". For any Gurobi version 10.0x, this line should be changed to "NAMES gurobi gurobi100".
 
 Create make file
+
+`cd build`
 
 `cmake ..`
 
@@ -44,7 +46,7 @@ Move into test folder
 
 `cd ../test`
 
-Run sar-solver executable
+Run otm-solver executable
 
 `../build/mutli-otm`
 
