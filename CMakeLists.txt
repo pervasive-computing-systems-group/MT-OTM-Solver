@@ -37,7 +37,7 @@ include_directories(
 
 
 add_executable(multi-otm
-	src/main_multi.cpp
+	src/main.cpp
 	src/AEdge.cpp
 	src/DEdge.cpp
 	src/Edge.cpp
