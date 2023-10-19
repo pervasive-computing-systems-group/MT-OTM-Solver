@@ -391,5 +391,4 @@ int main(int argc, char** argv) {
 
 	delete solver;
 	delete bestSolution;
-
 }
