@@ -7,7 +7,7 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(sar-solver)
+project(mt-otm-solver)
 
 option(CXX "enable C++ compilation" ON)
 if(CXX)
@@ -35,8 +35,8 @@ include_directories(
 	${CMAKE_CURRENT_LIST_DIR}/inc
 )
 
-
-add_executable(multi-otm
+## Build the MT-OTM-Solver
+add_executable(mt-otm-solver
 	src/main.cpp
 	src/AEdge.cpp
 	src/DEdge.cpp
@@ -61,7 +61,7 @@ add_executable(multi-otm
 	src/VertexOnEdge.cpp
 )
 
-
+## Build baseline solver
 add_executable(tree-solve
 	src/main_tree.cpp
 	src/AEdge.cpp
@@ -90,10 +90,10 @@ add_executable(tree-solve
 
 if(CXX)
 	set(CMAKE_CXX_STANDARD 11)
-	target_link_libraries(multi-otm optimized ${GUROBI_CXX_LIBRARY} debug ${GUROBI_CXX_DEBUG_LIBRARY})
+	target_link_libraries(mt-otm-solver optimized ${GUROBI_CXX_LIBRARY} debug ${GUROBI_CXX_DEBUG_LIBRARY})
 endif()
 
-target_link_libraries(multi-otm ${GUROBI_LIBRARY})
+target_link_libraries(mt-otm-solver ${GUROBI_LIBRARY})
 
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
     include(FeatureSummary)

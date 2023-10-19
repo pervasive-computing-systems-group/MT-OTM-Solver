@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
 		outputPath = argv[5];
 		velocity_flag = DEFAULT_V_FLAG;
 	}
-	else if(argc == 6) {
+	else if(argc == 5) {
 		algApproach = atoi(argv[1]);
 		numUAVs = atoi(argv[2]);
 		filePath = argv[3];
@@ -387,11 +387,6 @@ int main(int argc, char** argv) {
 		}
 		fprintf(pOutputFile, " %.3f\n", duration_s);
 		fclose(pOutputFile);
-
-//		FILE * pPlotBuildFile;
-//		pPlotBuildFile = fopen("PlotBuildFile_kip.txt", "a");
-//		fprintf(pPlotBuildFile, "%d %f\n", bestSolution->m_nN, bestSolution->m_tBSTrajectory.mX*t_best);
-//		fclose(pPlotBuildFile);
 	}
 
 	delete solver;
