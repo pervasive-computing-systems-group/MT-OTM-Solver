@@ -52,6 +52,9 @@ public:
 	 */
 	double GetSubtourTime(int m, E_VelocityFlag fixedVelocityFlag = E_VelocityFlag::e_NotFixed);
 
+	/*
+	 * Number of UAVs to deploy. NOTE: This is currently not actually used and most solvers assume the number of UAVs is 1.
+	 */
 	int m_nNumUAVs;
 private:
 	// Build solution
