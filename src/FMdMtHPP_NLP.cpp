@@ -28,11 +28,6 @@ void FMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 	L_M =(N - M + 1);
 	BIG_M = (M*L_M + 2*M - 1);
 
-	double C1 = 36791437195.0;
-	double C2 = 10557000.0;
-	double C3 = 10557.0;
-	double C4 = 12.24;
-
 	// Gurobi variables
 	GRBEnv* env = NULL;
 	// Tracks edges between way-points

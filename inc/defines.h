@@ -27,6 +27,11 @@
 #define V_OPT		14.0
 #define V_POW_MIN	7.5
 #define BATTERY_SWAP_TIME	90.0 // in seconds
+// Speed function
+#define C1 36791437195.0
+#define C2 10557000.0
+#define C3 10557.0
+#define C4 12.24
 
 // Fixed-Velocity flags
 enum E_VelocityFlag {
