@@ -41,6 +41,12 @@ void Tree_Cutting::RunAlgorithm(Solution* solution) {
 		fclose(pForestFile);
 	}
 
+	if(solution->m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+		// The following assumes a linear UGV... hard fail
+		printf("[ERROR] : Tree_Cutting::RunAlgorithm : Given non-linear UGV, expected linear\n");
+		exit(0);
+	}
+
 	// Fill in matrix using results from MST
 	for(UDEdge edge : result) {
 		int a = edge.p_oAVertex->nID;

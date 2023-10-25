@@ -21,6 +21,7 @@
 #include "Roots.h"
 #include "Vertex.h"
 #include "Graph_Theory_Algorithms.h"
+#include "UGVTrajectory.h"
 
 // Allows for solution specific debugging
 #define DEBUG_SOLUTION	0 || DEBUG
@@ -28,23 +29,6 @@
 // Allowable sub-tour distance tolerance
 #define ST_DIST_TOLERANCE		1
 
-
-/*
- * Struct that represents the trajectory of the base station
- */
-struct T_BSTrajectory {
-	float x;
-	float y;
-	float mX;
-	float mY;
-
-	T_BSTrajectory() {
-		x = 0;
-		y =0;
-		mX = 0;
-		mY =0;
-	}
-};
 
 class Solution {
 public:
@@ -103,8 +87,6 @@ public:
 	float GetMinSpanningForestDistanceRND();
 	// Returns the baseline time to run through the minimum spanning constrained forest
 	float GetMinSpanningForestRT(bool findForest = false);
-	// Gets the predicted completion time that was computed prior to solving the solution
-	float GetPredictedCompletionTime();
 	/*
 	 * Makes the solution consistent with the assigned partitions by adjusting the positions of the
 	 * depots/terminals. Returns false if the solution hasn't been solved yet or if it determines
@@ -130,9 +112,12 @@ public:
 	bool m_bPartitioned;
 	bool m_bSolved;
 	bool m_bFeasible;
-	T_BSTrajectory m_tBSTrajectory;
+	UGVTrajectory m_tBSTrajectory;
+	// Variables for time
+	std::vector<double> m_Td_k;
+	std::vector<double> m_Tt_k;
+
 protected:
-	float m_fPredCompTime;
 	bool m_bSetup;
 	bool m_bInheritedSpeeds;
 private:

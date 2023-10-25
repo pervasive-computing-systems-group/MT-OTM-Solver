@@ -42,3 +42,9 @@ enum E_VelocityFlag {
 	e_Default = 10
 };
 
+// UGV trajectory function type
+enum E_TrajFuncType {
+	e_StraightLine = 0,
+	e_Sinusoidal = 1
+};
+

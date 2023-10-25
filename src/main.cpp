@@ -82,26 +82,26 @@ double runtimeFromDistance(double dist, int m, int numUAVs, E_VelocityFlag veloc
 /*
  * Determines a minimum-spanning constrained forest for the given plot at filePath
  */
-double guessRuntime(std::string filePath, int m, int numUAVs, E_VelocityFlag velocityFlag) {
-	// Create basic solution
-	Solution solution(filePath, 1, 0);
-	// Find distance of MSF of basic solution
-	double min_dist = Graph_Theory_Algorithms::MSF_Prims(solution.m_pVertexData, solution.m_nN + 1, m);
-	// Find running time based on MSF
-	double MSF_time = runtimeFromDistance(min_dist, m, numUAVs, velocityFlag);
-	// Verify that this minimum distance was feasible
-	if(MSF_time < INF) {
-		// Create a new solution using the MSF time
-		Solution_Multi solution(filePath, m, numUAVs, MSF_time);
-		// Find new minimum distance based on full MSF with all depots/terminals
-		double total_min_dist = Graph_Theory_Algorithms::MSF_Prims(solution.m_pVertexData, solution.m_nN + 2*m, m);
-		// Find running time of full MSF
-		MSF_time = runtimeFromDistance(total_min_dist, m, numUAVs, velocityFlag);
-	}
-
-	printf("Found best possible time of %fs\n", MSF_time);
-	return MSF_time;
-}
+//double guessRuntime(std::string filePath, int m, int numUAVs, E_VelocityFlag velocityFlag) {
+//	// Create basic solution
+//	Solution solution(filePath, 1, 0);
+//	// Find distance of MSF of basic solution
+//	double min_dist = Graph_Theory_Algorithms::MSF_Prims(solution.m_pVertexData, solution.m_nN + 1, m);
+//	// Find running time based on MSF
+//	double MSF_time = runtimeFromDistance(min_dist, m, numUAVs, velocityFlag);
+//	// Verify that this minimum distance was feasible
+//	if(MSF_time < INF) {
+//		// Create a new solution using the MSF time
+//		Solution_Multi solution(filePath, m, numUAVs, MSF_time);
+//		// Find new minimum distance based on full MSF with all depots/terminals
+//		double total_min_dist = Graph_Theory_Algorithms::MSF_Prims(solution.m_pVertexData, solution.m_nN + 2*m, m);
+//		// Find running time of full MSF
+//		MSF_time = runtimeFromDistance(total_min_dist, m, numUAVs, velocityFlag);
+//	}
+//
+//	printf("Found best possible time of %fs\n", MSF_time);
+//	return MSF_time;
+//}
 
 float* vect_diff(float* A, float* A_prime, float* diff_A_Aprime, int m) {
 	for(int i = 0; i < m; i++) {

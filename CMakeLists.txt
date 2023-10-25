@@ -35,7 +35,7 @@ include_directories(
 	${CMAKE_CURRENT_LIST_DIR}/inc
 )
 
-## Build the MT-OTM-Solver
+## Build the MT-OTM-Solver 
 add_executable(mt-otm-solver
 	src/main.cpp
 	src/AEdge.cpp
@@ -57,6 +57,7 @@ add_executable(mt-otm-solver
 	src/Solution_Multi.cpp
 	src/Solver.cpp
 	src/UDEdge.cpp
+	src/UGVTrajectory.cpp
 	src/Vertex.cpp
 	src/VertexOnEdge.cpp
 )
@@ -84,6 +85,32 @@ add_executable(tree-solve
 	src/Tree_Cutting_LKH.cpp
 	src/Tree_Solver.cpp
 	src/UDEdge.cpp
+	src/UGVTrajectory.cpp
+	src/Vertex.cpp
+	src/VertexOnEdge.cpp
+)
+
+## Build advanced solver
+add_executable(moving-solver
+	src/main_moving.cpp
+	src/AEdge.cpp
+	src/DEdge.cpp
+	src/Edge.cpp
+	src/EmptyGraph_Planner.cpp
+	src/Generic_Partitioner.cpp
+	src/Graph_Theory_Algorithms.cpp
+	src/Hybrid_Planner.cpp
+	src/KMeans_Partitioner.cpp
+	src/MMdMtHPP_NLP.cpp
+	src/Partitioner.cpp
+	src/Path_Planner.cpp
+	src/Random_PathPlanner.cpp
+	src/Roots.cpp
+	src/Solution.cpp
+	src/Solution_Multi.cpp
+	src/Solver.cpp
+	src/UDEdge.cpp
+	src/UGVTrajectory.cpp
 	src/Vertex.cpp
 	src/VertexOnEdge.cpp
 )
@@ -91,9 +118,11 @@ add_executable(tree-solve
 if(CXX)
 	set(CMAKE_CXX_STANDARD 11)
 	target_link_libraries(mt-otm-solver optimized ${GUROBI_CXX_LIBRARY} debug ${GUROBI_CXX_DEBUG_LIBRARY})
+	target_link_libraries(moving-solver optimized ${GUROBI_CXX_LIBRARY} debug ${GUROBI_CXX_DEBUG_LIBRARY})
 endif()
 
 target_link_libraries(mt-otm-solver ${GUROBI_LIBRARY})
+target_link_libraries(moving-solver ${GUROBI_LIBRARY})
 
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
     include(FeatureSummary)

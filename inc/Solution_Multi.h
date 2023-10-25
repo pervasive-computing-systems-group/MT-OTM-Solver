@@ -28,7 +28,6 @@ class Solution_Multi: public Solution {
 public:
 	Solution_Multi(std::string graph_path, int m, int numUAVs, double ct_guess);
 	Solution_Multi(std::string graph_path, int m, int numUAVs, double* A);
-	Solution_Multi(Solution_Multi* cp_solution, double ct, double* A);
 	virtual ~Solution_Multi();
 
 	/*
@@ -56,6 +55,9 @@ public:
 	 * Number of UAVs to deploy. NOTE: This is currently not actually used and most solvers assume the number of UAVs is 1.
 	 */
 	int m_nNumUAVs;
+
+protected:
+
 private:
 	// Build solution
 	void classConstructor(std::string graph_path, int m, int numUAVs, double* A);

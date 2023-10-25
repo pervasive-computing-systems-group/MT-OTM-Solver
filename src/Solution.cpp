@@ -16,7 +16,6 @@ Solution::Solution(std::string graph_path) {
 	m_bPartitioned = false;
 	m_bSetup = false;
 	m_bFeasible = false;
-	m_fPredCompTime = -1;
 	m_bInheritedSpeeds = true;
 
 	// Open file with coordinates
@@ -82,12 +81,14 @@ Solution::Solution(std::string graph_path) {
 	lineStreamBSTraj >> x_1 >> y_1;
 
 	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.x = x;
-	m_tBSTrajectory.y = y;
-	m_tBSTrajectory.mX = x_1;
-	m_tBSTrajectory.mY = y_1;
+	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Create initial base station
+	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+		// The following assumes a linear UGV... hard fail
+		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
+		exit(0);
+	}
 	m_pVertexData[i].nID = i;
 	m_pVertexData[i].fX = m_tBSTrajectory.x;
 	m_pVertexData[i].fY = m_tBSTrajectory.y;
@@ -110,8 +111,8 @@ Solution::Solution(std::string graph_path) {
 	}
 
 	if(DEBUG_SOLUTION)
-		printf("Base station: %.3f, %.3f, going: %.3f, %.3f, predicted time = %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
-				m_tBSTrajectory.mX, m_tBSTrajectory.mY, m_fPredCompTime);
+		printf("Base station: %.3f, %.3f, going: %.3f, %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
+				m_tBSTrajectory.mX, m_tBSTrajectory.mY);
 
 	// Allocate memory for adjacency matrix
 	m_pAdjMatrix = new bool*[m_nNumVertices];
@@ -181,16 +182,18 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 	lineStreamBSTraj >> x_1 >> y_1;
 
 	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.x = x;
-	m_tBSTrajectory.y = y;
-	m_tBSTrajectory.mX = x_1;
-	m_tBSTrajectory.mY = y_1;
+	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Done reading data, close file
 	file.close();
 
 	// Add depot and terminal vertices based on base station trajectory using predicted "step-sizes"
 	// of the base station for each partition
+	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+		// The following assumes a linear UGV... hard fail
+		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
+		exit(0);
+	}
 	float tour_duration_step_x = 0;
 	float tour_duration_step_y = 0;
 	float battery_change_ts = BATTERY_SWAP_TIME;
@@ -204,7 +207,6 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 
 		tour_duration_step_x = time_per_step * m_tBSTrajectory.mX;
 		tour_duration_step_y = time_per_step * m_tBSTrajectory.mY;
-		m_fPredCompTime = ct_guess;
 	}
 	else {
 		/*
@@ -229,12 +231,7 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 
 		tour_duration_step_x = time_per_step * m_tBSTrajectory.mX;
 		tour_duration_step_y = time_per_step * m_tBSTrajectory.mY;
-		m_fPredCompTime = base_line_time;
 	}
-
-	// Set predicted completion time
-	if(DEBUG_SOLUTION)
-		printf(" predicted time: %f\n", m_fPredCompTime);
 
 	// Find the additional terminals and depots based on the base stations trajectory.
 	// First terminal location
@@ -287,8 +284,8 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 	}
 
 	if(DEBUG_SOLUTION)
-		printf("Base station: %.3f, %.3f, going: %.3f, %.3f, predicted time = %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
-				m_tBSTrajectory.mX, m_tBSTrajectory.mY, m_fPredCompTime);
+		printf("Base station: %.3f, %.3f, going: %.3f, %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
+				m_tBSTrajectory.mX, m_tBSTrajectory.mY);
 
 	// Allocate memory for adjacency matrix
 	m_pAdjMatrix = new bool*[m_nNumVertices];
@@ -367,13 +364,17 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 	lineStreamBSTraj >> x_1 >> y_1;
 
 	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.x = x;
-	m_tBSTrajectory.y = y;
-	m_tBSTrajectory.mX = x_1;
-	m_tBSTrajectory.mY = y_1;
+	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Done reading data, close file
 	file.close();
+
+	// Create initial base station
+	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+		// The following assumes a linear UGV... hard fail
+		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
+		exit(0);
+	}
 
 	// Add depot and terminal vertices based on base station trajectory using predicted "step-sizes"
 	// of the base station for each partition
@@ -384,12 +385,6 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 
 	// Determine approximate base station step size per partition based off of given completion time guess
 	float time_less_battery_swap = ct_guess - (battery_change_ts * (m_nM - 1));
-
-	m_fPredCompTime = ct_guess;
-
-	// Set predicted completion time
-	if(SANITY_PRINT)
-		printf(" predicted time: %f\n", m_fPredCompTime);
 
 	// Find the additional terminals and depots based on the base stations trajectory.
 	// First terminal location
@@ -441,8 +436,8 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 	}
 
 	if(DEBUG_SOLUTION)
-		printf("Base station: %.3f, %.3f, going: %.3f, %.3f, predicted time = %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
-				m_tBSTrajectory.mX, m_tBSTrajectory.mY, m_fPredCompTime);
+		printf("Base station: %.3f, %.3f, going: %.3f, %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
+				m_tBSTrajectory.mX, m_tBSTrajectory.mY);
 
 	// Allocate memory for adjacency matrix
 	m_pAdjMatrix = new bool*[m_nNumVertices];
@@ -503,6 +498,18 @@ Solution::Solution(Solution* cp_solution, float ct, float* A) {
 	m_tBSTrajectory.mX = cp_solution->m_tBSTrajectory.mX;
 	m_tBSTrajectory.mY = cp_solution->m_tBSTrajectory.mY;
 
+	// Save base station info in base station trajectory struct
+	m_tBSTrajectory.configTrajectory(cp_solution->m_tBSTrajectory.x,
+			cp_solution->m_tBSTrajectory.y,cp_solution->m_tBSTrajectory.mX,
+			cp_solution->m_tBSTrajectory.mY,E_TrajFuncType::e_StraightLine);
+
+	// Create initial base station
+	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+		// The following assumes a linear UGV... hard fail
+		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
+		exit(0);
+	}
+
 	if(DEBUG_SOLUTION)
 		printf("Graph of n: %d, m: %d, R: %f\n", m_nN, m_nM, m_fR);
 
@@ -514,12 +521,6 @@ Solution::Solution(Solution* cp_solution, float ct, float* A) {
 
 	// Determine approximate base station step size per partition based off of given completion time guess
 	float time_less_battery_swap = ct - (battery_change_ts * (m_nM - 1));
-
-	m_fPredCompTime = ct;
-
-	// Set predicted completion time
-	if(SANITY_PRINT)
-		printf(" predicted time: %f\n", m_fPredCompTime);
 
 	// Find the additional terminals and depots based on the base stations trajectory.
 	// First terminal location
@@ -571,8 +572,8 @@ Solution::Solution(Solution* cp_solution, float ct, float* A) {
 	}
 
 	if(DEBUG_SOLUTION)
-		printf("Base station: %.3f, %.3f, going: %.3f, %.3f, predicted time = %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
-				m_tBSTrajectory.mX, m_tBSTrajectory.mY, m_fPredCompTime);
+		printf("Base station: %.3f, %.3f, going: %.3f, %.3f\n\n",m_tBSTrajectory.x, m_tBSTrajectory.y,
+				m_tBSTrajectory.mX, m_tBSTrajectory.mY);
 
 	if(m_bPartitioned) {
 		// Copy over any partitioning data
@@ -688,9 +689,6 @@ bool Solution::BuildCompleteSolution(std::vector<std::list<Vertex*>>& tours, std
 	// Assign new vertex array
 	m_pVertexData = pVertexData;
 
-	// Update completion time
-	m_fPredCompTime = GetTerminalOfPartion(m_nM - 1)->fX/m_tBSTrajectory.mX;
-
 	// Sanity print
 	if(DEBUG_SOLUTION) {
 		printf("Reformulated solution: n = %d, m = %d, |G| = %d\nG:\n", m_nN, m_nM, m_nNumVertices);
@@ -698,7 +696,7 @@ bool Solution::BuildCompleteSolution(std::vector<std::list<Vertex*>>& tours, std
 			printf(" %d: (%.3f, %.3f), type: %c\n", m_pVertexData[j].nID, m_pVertexData[j].fX, m_pVertexData[j].fY,
 					(m_pVertexData[j].eVType == e_Destination) ? 'U' : ((m_pVertexData[j].eVType == e_Terminal) ? 'P' : 'D'));
 		}
-		printf(" completion time: %f\nAdjacency Matrix:\n", m_fPredCompTime);
+		printf("\nAdjacency Matrix:\n");
 		for(int i = 0; i < m_nNumVertices; i++) {
 			for(int j = 0; j < m_nNumVertices; j++) {
 				printf(" %d", m_pAdjMatrix[i][j]);
@@ -1223,64 +1221,6 @@ float Solution::GetMinSpanningForestDistance(bool findForest) {
 	 * edges. The returned distance is theoretical only (based on the above math), the actual
 	 * minimum spanning constrained forest is never found.
 	 */
-//	float forest_span = m_fR * (m_nN - m_nM);
-//
-//	if(m_bSetup) {
-//		// Find the shortest edge for each depot/base station
-//		for(int i = 0; i < m_nM; i++) {
-//			float shortest_to_depot = std::numeric_limits<float>::max();
-//			float shortest_to_terminal = std::numeric_limits<float>::max();
-//			Vertex* depot = GetDepotOfPartion(i);
-//			Vertex* terminal = GetTerminalOfPartion(i);
-//			int best_v_depot;
-//			int best_v_term;
-//
-//			// Run through all vertices
-//			for(int j = 0; j < m_nN; j++) {
-//				// Check depot
-//				float dist_to_v = depot->GetDistanceTo(m_pVertexData + j);
-//				if(dist_to_v < shortest_to_depot) {
-//					shortest_to_depot = dist_to_v;
-//					best_v_depot = j;
-//				}
-//
-//				// Check terminal
-//				dist_to_v = terminal->GetDistanceTo(m_pVertexData + j);
-//				if(dist_to_v < shortest_to_terminal) {
-//					shortest_to_terminal = dist_to_v;
-//					best_v_term = j;
-//				}
-//			}
-//
-//			// Add these distance to distance of min-spanning tree
-//			forest_span += shortest_to_depot;
-//			forest_span += shortest_to_terminal;
-//
-//			if(findForest) {
-//				// Add these edges to the graph
-//				m_pAdjMatrix[best_v_depot][depot->nID] = true;
-//				m_pAdjMatrix[best_v_term][terminal->nID] = true;
-//			}
-//		}
-//	}
-//	else {
-//		// We haven't been set-up yet, give a baseline based on dividing the tessellation graph
-//		//  into m partitions and adding a single leg from the base station.
-//		Vertex* depot = GetDepotOfPartion(0);
-//		float shortest_to_depot = std::numeric_limits<float>::max();
-//
-//		// Run through all vertices and find the closest to the depot
-//		for(int j = 0; j < m_nN; j++) {
-//			// Check depot
-//			float dist_to_v = depot->GetDistanceTo(m_pVertexData + j);
-//			if(dist_to_v < shortest_to_depot) {
-//				shortest_to_depot = dist_to_v;
-//			}
-//		}
-//
-//		// Add this leg to the total estimate
-//		forest_span += shortest_to_depot;
-//	}
 
 
 	if(m_bSetup && (m_pAdjMatrix != NULL)) {
@@ -1325,6 +1265,13 @@ float Solution::GetMinSpanningForestDistance(bool findForest) {
 		 * First, find point p_b_m. This is the minimum distance that the base-station could travel by
 		 * the time the UAV finishes searching the entire search space
 		 */
+
+		if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+			// The following assumes a linear UGV... hard fail
+			printf("[ERROR] : Solution::GetMinSpanningForestDistance : Given non-linear UGV, expected linear\n");
+			exit(0);
+		}
+
 		float p_b_m = m_tBSTrajectory.mX * (l_1 + l_2 + 2*(m_nM - 1)*l_3_naught) / V_MAX;
 		// Create a temporary vertex at point p_b_m
 		Vertex v_temp;
@@ -1460,12 +1407,6 @@ float Solution::GetMinSpanningForestRT(bool findForest) {
 	return time;
 }
 
-
-// Gets the predicted completion time that was computed prior to solving the solution
-float Solution::GetPredictedCompletionTime() {
-	return m_fPredCompTime;
-}
-
 bool Solution::CorrectSolution(E_VelocityFlag velocityFlag) {
 	bool ret_val = true;
 
@@ -1480,6 +1421,12 @@ bool Solution::CorrectSolution(E_VelocityFlag velocityFlag) {
 		// Correct each partition in turn
 		for(int i = 0; i < m_nM; i++) {
 			/// Correct the position of the depot
+			if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+				// The following assumes a linear UGV... hard fail
+				printf("[ERROR] : Solution::CorrectSolution : Given non-linear UGV, expected linear\n");
+				exit(0);
+			}
+
 			if(i > 0) {
 				GetDepotOfPartion(i)->fX = GetTerminalOfPartion(i-1)->fX + BATTERY_SWAP_TIME*this->m_tBSTrajectory.mX;
 			}
@@ -1621,6 +1568,12 @@ void Solution::determineTerminalLocation(std::list<Vertex*> &subTour, float fV_u
 		// Sanity print
 		if(DEBUG_SOLUTION)
 			printf("  Found subTour dist = %f, time = %f\n", dist, t_l);
+
+		if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+			// The following assumes a linear UGV... hard fail
+			printf("[ERROR] : Solution::determineTerminalLocation : Given non-linear UGV, expected linear\n");
+			exit(0);
+		}
 
 		// New x coord of depot
 		float x_b = subTour.front()->fX + m_tBSTrajectory.mX*t_l;

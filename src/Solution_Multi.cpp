@@ -20,104 +20,6 @@ Solution_Multi::Solution_Multi(std::string graph_path, int m, int numUAVs, doubl
 	classConstructor(graph_path, m, numUAVs, A);
 }
 
-Solution_Multi::Solution_Multi(Solution_Multi* cp_solution, double ct, double* A) {
-	// Not setup!!!!
-	fprintf(stderr, "[ERROR] : Solution_Multi : Using copy constructor!\n Not implemented yet!!!\n");
-	exit(0);
-
-	m_nN = cp_solution->m_nN;
-	m_nM = cp_solution->m_nM;
-	m_fR = cp_solution->m_fR;
-	m_bHasTree = cp_solution->m_bHasTree;
-	m_bSolved = cp_solution->m_bSolved;
-	m_bPartitioned = cp_solution->m_bPartitioned;
-	m_nNumVertices = cp_solution->m_nNumVertices;
-	m_nNumUAVs = cp_solution->m_nNumUAVs;
-	m_bFeasible = true;
-	m_bInheritedSpeeds = false;
-	m_fPredCompTime = ct;
-
-	// Allocate memory and copy over adjacency matrix
-	m_pAdjMatrix = new bool*[m_nNumVertices];
-	for(int i = 0; i < m_nNumVertices; i++) {
-		m_pAdjMatrix[i] = new bool[m_nNumVertices];
-		for(int j = 0; j < m_nNumVertices; j++) {
-			m_pAdjMatrix[i][j] = cp_solution->m_pAdjMatrix[i][j];
-		}
-	}
-
-	// Create vertices of SSG
-	m_pVertexData = new Vertex[m_nNumVertices];
-	// Copy over way-point data
-	for(int i = 0; i < m_nN; i++) {
-		// Configure vertex
-		m_pVertexData[i].nID = cp_solution->m_pVertexData[i].nID;
-		m_pVertexData[i].fX = cp_solution->m_pVertexData[i].fX;
-		m_pVertexData[i].fY = cp_solution->m_pVertexData[i].fY;
-		m_pVertexData[i].eVType = E_VertexType::e_Destination;
-	}
-
-	// Add base station info in base station trajectory struct
-	m_tBSTrajectory.x = cp_solution->m_tBSTrajectory.x;
-	m_tBSTrajectory.y = cp_solution->m_tBSTrajectory.y;
-	m_tBSTrajectory.mX = cp_solution->m_tBSTrajectory.mX;
-	m_tBSTrajectory.mY = cp_solution->m_tBSTrajectory.mY;
-
-	m_tBSTrajectory.x = cp_solution->m_tBSTrajectory.x;
-	m_tBSTrajectory.y = cp_solution->m_tBSTrajectory.y;
-	m_tBSTrajectory.mX = cp_solution->m_tBSTrajectory.mX;
-	m_tBSTrajectory.mY = cp_solution->m_tBSTrajectory.mY;
-
-	if(DEBUG_MULT_SOLUTION)
-		printf("Graph of n: %d, m: %d, R: %f\n", m_nN, m_nM, m_fR);
-
-	// Set predicted completion time
-	if(SANITY_PRINT)
-		printf(" predicted time: %f\n", m_fPredCompTime);
-
-	// Find the additional terminals and depots based on the base stations trajectory.
-	place_depotsAndTerminals(A);
-
-	// Sanity print
-	if(DEBUG_MULT_SOLUTION) {
-		printf("|G| = %d, G:\n", m_nNumVertices);
-		for(int j = 0; j < m_nNumVertices; j++) {
-			printf(" %d: (%.3f, %.3f), type: %c\n", m_pVertexData[j].nID, m_pVertexData[j].fX, m_pVertexData[j].fY,
-					(m_pVertexData[j].eVType == e_Destination) ? 'U' : ((m_pVertexData[j].eVType == e_Terminal) ? 'P' : 'D'));
-		}
-	}
-
-	if(DEBUG_MULT_SOLUTION)
-		printf("Base station: %.3f, %.3f, going: %.3f, %.3f, predicted time = %.3f\n\n", m_tBSTrajectory.x, m_tBSTrajectory.y,
-				m_tBSTrajectory.mX, m_tBSTrajectory.mY, m_fPredCompTime);
-
-	if(m_bPartitioned) {
-		// Copy over any partitioning data
-		for(auto p : cp_solution->m_mPartitions) {
-			std::vector<Vertex*> partList;
-			for(Vertex* v : p.second) {
-				partList.push_back(v);
-			}
-			// Add this partition to the partitioning map
-			m_mPartitions.insert(std::pair<int, std::vector<Vertex*>>(p.first, partList));
-		}
-	}
-	else {
-		// Just create single partition with all vertices
-		std::vector<Vertex*> partList;
-		for(int i = 0; i < m_nNumVertices; i++) {
-			// Add to partition
-			partList.push_back(m_pVertexData + i);
-		}
-		// Add this partition to the partitioning map
-		m_mPartitions.insert(std::pair<int, std::vector<Vertex*>>(0, partList));
-	}
-
-	// Solution has been set-up
-	m_bSetup = true;
-
-}
-
 Solution_Multi::~Solution_Multi() { }
 
 
@@ -135,6 +37,9 @@ double Solution_Multi::TimeToRunMultiSolution() {
 	if(!m_bFeasible || !m_bSolved) {
 		// Problem is not feasible and/or not solved
 		ret_val = std::numeric_limits<double>::max();
+	}
+	else if(m_Tt_k.size() > 0) {
+		return m_Tt_k.back();
 	}
 	else {
 		// Find the partition with the farthest out terminal
@@ -290,22 +195,13 @@ void Solution_Multi::classConstructor(std::string graph_path, int m, int numUAVs
 	lineStreamBSTraj >> x_1 >> y_1;
 
 	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.x = x;
-	m_tBSTrajectory.y = y;
-	m_tBSTrajectory.mX = x_1;
-	m_tBSTrajectory.mY = y_1;
+	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Done reading data, close file
 	file.close();
 
 	// Find the additional terminals and depots based on the base stations trajectory.
 	place_depotsAndTerminals(A);
-
-	m_fPredCompTime = GetTerminalOfPartion(m)->fX/m_tBSTrajectory.mX;
-
-	// Set predicted completion time
-	if(SANITY_PRINT)
-		printf(" predicted time: %f\n", m_fPredCompTime);
 
 	// Sanity print
 	if(DEBUG_MULT_SOLUTION) {
@@ -317,8 +213,8 @@ void Solution_Multi::classConstructor(std::string graph_path, int m, int numUAVs
 	}
 
 	if(DEBUG_MULT_SOLUTION)
-		printf("Base station: %.3f, %.3f, going: %.3f, %.3f, predicted time = %.3f\n\n", m_tBSTrajectory.x, m_tBSTrajectory.y,
-				m_tBSTrajectory.mX, m_tBSTrajectory.mY, m_fPredCompTime);
+		printf("Base station: %.3f, %.3f, going: %.3f, %.3f\n\n", m_tBSTrajectory.x, m_tBSTrajectory.y,
+				m_tBSTrajectory.mX, m_tBSTrajectory.mY);
 
 	// Allocate memory for adjacency matrix
 	m_pAdjMatrix = new bool*[m_nNumVertices];
@@ -345,6 +241,13 @@ void Solution_Multi::classConstructor(std::string graph_path, int m, int numUAVs
 void Solution_Multi::place_depotsAndTerminals(double* A) {
 	// Add depot and terminal vertices based on base station trajectory using predicted "step-sizes"
 	// of the base station for each partition
+	// TODO: Fix for non-linear setups
+	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+		printf("[ERROR] : Solution_Multi::place_depotsAndTerminals : function does not work for non-linear inputs!\n");
+
+		exit(0);
+	}
+
 	float battery_change_step_x = m_tBSTrajectory.mX * BATTERY_SWAP_TIME;
 	float battery_change_step_y = m_tBSTrajectory.mY * BATTERY_SWAP_TIME;
 
