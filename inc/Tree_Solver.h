@@ -35,8 +35,6 @@ protected:
 	float getSubtourDist(std::list<Vertex*> &subtour);
 	// Determine the distance of the given sub-tour
 	void determineTerminalLocation(std::list<Vertex*> &subTour, float fV_b, float fV_u, Vertex* terminal);
-	// Determines if c is relatively close to zero. Avoids comparing floating-point numbers to zero
-	bool isZero(double c);
 
 private:
 };

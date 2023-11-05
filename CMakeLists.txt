@@ -40,6 +40,7 @@ add_executable(mt-otm-solver
 	src/main.cpp
 	src/AEdge.cpp
 	src/DEdge.cpp
+	src/defines.cpp
 	src/Edge.cpp
 	src/EmptyGraph_Planner.cpp
 	src/FMdMtHPP_NLP.cpp
@@ -67,6 +68,7 @@ add_executable(tree-solve
 	src/main_tree.cpp
 	src/AEdge.cpp
 	src/DEdge.cpp
+	src/defines.cpp
 	src/Edge.cpp
 	src/EmptyGraph_Planner.cpp
 	src/Generic_Partitioner.cpp
@@ -90,17 +92,19 @@ add_executable(tree-solve
 	src/VertexOnEdge.cpp
 )
 
-## Build advanced solver
+## Build advanced solver 
 add_executable(moving-solver
 	src/main_moving.cpp
 	src/AEdge.cpp
 	src/DEdge.cpp
+	src/defines.cpp
 	src/Edge.cpp
 	src/EmptyGraph_Planner.cpp
 	src/Generic_Partitioner.cpp
 	src/Graph_Theory_Algorithms.cpp
 	src/Hybrid_Planner.cpp
-	src/KMeans_Partitioner.cpp
+	src/K_TSP.cpp
+	src/K_TSP_Shft.cpp
 	src/MMdMtHPP_NLP.cpp
 	src/Partitioner.cpp
 	src/Path_Planner.cpp

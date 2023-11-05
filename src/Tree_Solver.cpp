@@ -6,10 +6,6 @@ Tree_Solver::Tree_Solver() {
 Tree_Solver::~Tree_Solver() {
 }
 
-bool Tree_Solver::isZero(double c) {
-	return (c < 0.0001) && (c > -0.0001);
-}
-
 
 //***********************************************************
 // Public Member Functions

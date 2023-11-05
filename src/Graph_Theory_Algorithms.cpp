@@ -172,6 +172,68 @@ bool Graph_Theory_Algorithms::DFS_TopAdjMtrx(bool** g, int* parentList, int g_si
 	return false;
 }
 
+
+// Finds the distance of a Min-Spanning-Tree using Prim's Algorithm on complete graphs
+float Graph_Theory_Algorithms::MST_Prims(std::vector<Vertex*>& v) {
+	if(GRAPH_DEBUG) {
+		printf("Running Prim's Algorithm\n");
+	}
+
+	float dist = 0;
+
+	// Create two lists to hold the vertices
+	std::list<Vertex*> t_list;
+	std::list<Vertex*> g_list;
+
+	// Add all vertices to graph-list
+	for(int i = 0; i < v.size(); i++) {
+		g_list.push_back(v.at(i));
+	}
+
+	// To start, add a "random" vertex to the tree
+	t_list.push_back(g_list.front());
+	g_list.pop_front();
+
+	if(GRAPH_DEBUG) {
+		printf("Ready to start, |g-list| = %ld, |t-list| = %ld\n", g_list.size(), t_list.size());
+	}
+
+	// Run until there are not more vertices in graph-list
+	while(!g_list.empty()) {
+		// Find shortest edge between tree-list and graph-list
+		float shortest_leg = std::numeric_limits<float>::max();
+		std::list<Vertex*>::iterator t_it = t_list.begin(), best_v = g_list.begin();
+		for (; t_it != t_list.end(); ++t_it) {
+			std::list<Vertex*>::iterator g_it = g_list.begin();
+			for (; g_it != g_list.end(); ++g_it) {
+				float dist_t_to_g = (*t_it)->GetDistanceTo(*g_it);
+				if(dist_t_to_g < shortest_leg) {
+					shortest_leg = dist_t_to_g;
+					best_v = g_it;
+				}
+			}
+		}
+
+		// Sanity Print
+		if(GRAPH_DEBUG) {
+			printf("Moving %d into tree\n", (*best_v)->nID);
+		}
+
+		// Move the next closest vertex into the tree, remove from graph
+		Vertex* move_to_tree = *best_v;
+		dist += shortest_leg;
+		g_list.erase(best_v);
+		t_list.push_back(move_to_tree);
+	}
+
+	// Sanity Print
+	if(GRAPH_DEBUG) {
+		printf("Found MST distance of %f\n", dist);
+	}
+
+	return dist;
+}
+
 // Finds the distance of a Min-Spanning-Tree using Prim's Algorithm
 float Graph_Theory_Algorithms::MST_Prims(Vertex* V, int n) {
 	if(GRAPH_DEBUG) {

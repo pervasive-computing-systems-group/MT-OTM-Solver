@@ -775,6 +775,15 @@ void Solution::PrintSolution() {
 	}
 }
 
+// Prints out the input graph for associated with this solution
+void Solution::PrintGraph() {
+	printf("|G| = %d, G:\n", m_nNumVertices);
+	for(int j = 0; j < m_nNumVertices; j++) {
+		printf(" %d: (%.3f, %.3f), type: %c\n", m_pVertexData[j].nID, m_pVertexData[j].fX, m_pVertexData[j].fY,
+				(m_pVertexData[j].eVType == e_Destination) ? 'U' : ((m_pVertexData[j].eVType == e_Terminal) ? 'P' : 'D'));
+	}
+}
+
 // Prints out the data to be used in an AMPL model. This will look like a large 2D array of absolute distances
 void Solution::PrintAMPLData() {
 	// Print results to file
@@ -874,6 +883,70 @@ void Solution::PrintLKHData() {
 	}
 
     printf("  Done!\n");
+	fprintf(pDataFile, "EOF\n");
+	fclose(pDataFile);
+}
+
+// Prints out the data to be used in the TSPLIB file format for the LKH solver for the vertices in lst
+void Solution::PrintLKHData(std::vector<Vertex*> &lst) {
+	printf("Creating LKH Data Files\n");
+
+	// Mark which vertices are the depot and terminal (assumed to be last and second to last)
+	int terminal_id= lst.at(lst.size()-1)->nID;
+	int depot_id = lst.at(lst.size()-2)->nID;
+	printf(" Depot: %d, Terminal: %d\n", depot_id, terminal_id);
+
+	// Print solver parameter file
+	printf(" Creating parameter file\n");
+	FILE * pParFile;
+	char buff1[100];
+	sprintf(buff1, "FixedHPP.par");
+	printf("  %s\n", buff1);
+	pParFile = fopen(buff1, "w");
+
+	fprintf(pParFile, "PROBLEM_FILE = FixedHPP.tsp\n");
+	fprintf(pParFile, "COMMENT Fixed Hamiltonian Path Problem\n");
+	fprintf(pParFile, "TOUR_FILE = LKH_output.dat\n");
+
+	printf("  Done!\n");
+	fclose(pParFile);
+
+	// Print node data to file
+	printf(" Creating node data file\n");
+	FILE * pDataFile;
+	char buff2[100];
+	sprintf(buff2, "FixedHPP.tsp");
+	printf("  %s\n", buff2);
+	pDataFile = fopen(buff2, "w");
+
+	printf("  Adding graph specification data\n");
+	fprintf(pDataFile, "NAME : FixedHPP \n");
+	fprintf(pDataFile, "COMMENT : Fixed Hamiltonian Path Problem \n");
+	fprintf(pDataFile, "TYPE : TSP \n");
+	fprintf(pDataFile, "DIMENSION : %ld \n", lst.size());
+	fprintf(pDataFile, "EDGE_WEIGHT_TYPE : EXPLICIT \n");
+	fprintf(pDataFile, "EDGE_WEIGHT_FORMAT : FULL_MATRIX\n");
+
+	printf("  Adding NxN weights matrix\n");
+	fprintf(pDataFile, "EDGE_WEIGHT_SECTION\n");
+	for(Vertex* v : lst) {
+		for(Vertex* u : lst) {
+			if((v->nID == depot_id && u->nID == terminal_id) || (v->nID == terminal_id && u->nID == depot_id)) {
+				fprintf(pDataFile, "%f\t", 0.0);
+			}
+			else {
+				if((v->nID == depot_id) || (u->nID == depot_id) || (u->nID == terminal_id) || (v->nID == terminal_id)) {
+					fprintf(pDataFile, "%.5f\t", v->GetDistanceTo(u)*1000 );
+				}
+				else {
+					fprintf(pDataFile, "%.5f\t", v->GetDistanceTo(u));
+				}
+			}
+		}
+		fprintf(pDataFile, "\n");
+	}
+
+	printf("  Done!\n");
 	fprintf(pDataFile, "EOF\n");
 	fclose(pDataFile);
 }

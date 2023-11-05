@@ -34,9 +34,6 @@ protected:
 	void RunAlgorithm(Solution* pathSolution);
 
 private:
-	// Takes in an integer and returns a string of said integer
-	std::string itos(int i);
-
 	int U_d_k(int k);
 
 	int N;

@@ -179,12 +179,6 @@ void PathTSP_MIP_PathPlanner::RunAlgorithm(Solution* solution) {
 // Private Member Functions
 //***********************************************************
 
-std::string PathTSP_MIP_PathPlanner::itos(int i) {
-	std::stringstream s;
-	s << i;
-	return s.str();
-}
-
 //
 void PathTSP_MIP_PathPlanner::PathTSPMIP(Solution* solution, int p) {
 

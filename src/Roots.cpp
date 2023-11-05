@@ -77,7 +77,4 @@ void Roots::FindRoots(double a, double b, double c) {
 // Private Member Functions
 //***********************************************************
 
-bool Roots::isZero(double c) {
-	return (c < 0.0001) && (c > -0.0001);
-}
 

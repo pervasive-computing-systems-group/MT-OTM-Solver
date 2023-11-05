@@ -11,6 +11,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <sstream>
 
 // Project-wide debug flag
 #define DEBUG			0
@@ -48,3 +49,9 @@ enum E_TrajFuncType {
 	e_Sinusoidal = 1
 };
 
+// Determines if f is relatively close to zero. Avoids comparing floating-point numbers to zero
+bool isZero(double f);
+// Takes in an integer and returns a string of said integer
+std::string itos(int i);
+// Determines if a is "roughly" the same as b. Avoids comparing floating-point numbers
+bool equalFloats(double a, double b);

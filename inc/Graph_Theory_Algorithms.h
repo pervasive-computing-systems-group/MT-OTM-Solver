@@ -35,6 +35,8 @@ public:
 			std::map<VertexOnEdge*, float>& costMap, std::map<VertexOnEdge*, VertexOnEdge*>& parentMap);
 	// Runs recursive implementation of DFS to find shortest path from vertex u to vertex v in an undirected graph g
 	static bool DFS_TopAdjMtrx(bool** g, int* parentList, int g_size, int u, int v);
+	// Finds the distance of a Min-Spanning-Tree using Prim's Algorithm on complete graphs
+	static float MST_Prims(std::vector<Vertex*>& V);
 	// Finds the distance of a Min-Spanning-Tree using Prim's Algorithm on complete graphs with n vertices
 	static float MST_Prims(Vertex* V, int n);
 	// Finds Min-Spanning-Tree using Prim's Algorithm on complete graphs with n vertices, stores solution in results, returns tree length

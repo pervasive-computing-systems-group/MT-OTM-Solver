@@ -31,6 +31,4 @@ public:
 	bool imaginary;
 protected:
 private:
-	// Determines if c is relatively close to zero. Avoids comparing floating-point numbers to zero
-	bool isZero(double c);
 };

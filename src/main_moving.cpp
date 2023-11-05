@@ -11,6 +11,8 @@
 #include "Solution_Multi.h"
 #include "Solver.h"
 #include "MMdMtHPP_NLP.h"
+#include "K_TSP.h"
+#include "K_TSP_Shft.h"
 
 #define DEFAULT_ALGORITHM	1
 #define DEFAULT_NUM_UAVS	1
@@ -74,11 +76,21 @@ int main(int argc, char** argv) {
 	Solver* solver;
 
 	MMdMtHPP_NLP moveGV_NLP;
+	K_TSP kTSP;
+	K_TSP_Shft kTSPshft;
 
 	// Create a solver object, which performs step 1 and 2.3/2.4
 	switch(algApproach) {
 	case 1: // Moving GV NLP
 		solver = new Solver(&moveGV_NLP);
+		break;
+
+	case 2: // Clustering-TSP
+		solver = new Solver(&kTSP);
+		break;
+
+	case 3: // Clustering-TSP-Shifting
+		solver = new Solver(&kTSPshft);
 		break;
 
 	default:
@@ -104,7 +116,7 @@ int main(int argc, char** argv) {
 		m += 1;
 
 		// Make a solution with m subtours
-		Solution_Multi* retSolution =  new Solution_Multi(filePath, m, numUAVs, 500);
+		Solution_Multi* retSolution =  new Solution_Multi(filePath, m, numUAVs, 0.0);
 
 		printf("\nRunning Multi-OTM solver with m = %d\n", m);
 		// Solve path-planning

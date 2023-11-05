@@ -408,12 +408,6 @@ void FMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 // Private Member Functions
 //***********************************************************
 
-std::string FMdMtHPP_NLP::itos(int i) {
-	std::stringstream s;
-	s << i;
-	return s.str();
-}
-
 
 int FMdMtHPP_NLP::U_d_k(int k) {
 	// The math is 1-based but k is 0-based

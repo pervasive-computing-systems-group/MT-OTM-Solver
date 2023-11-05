@@ -61,6 +61,4 @@ private:
 	 * Solves a Path-TSP problem in partition p using a MIP and Gurobi
 	 */
 	void PathTSPMIP(Solution* solution, int p);
-	// Takes in an integer and returns a string of said integer
-	std::string itos(int i);
 };

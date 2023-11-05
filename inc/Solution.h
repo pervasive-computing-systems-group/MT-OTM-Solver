@@ -43,10 +43,14 @@ public:
 	bool BuildCompleteSolution(std::vector<std::list<Vertex*>>& tours, std::vector<float>& speeds);
 	// Prints out the adjacency matrix contained in this solution (or nothing if adjacency matrix was not set-up)
 	void PrintSolution();
+	// Prints out the input graph for associated with this solution
+	void PrintGraph();
 	// Prints out the data to be used in an AMPL model. This will look like a large 2D array of absolute distances
 	void PrintAMPLData();
 	// Prints out the data to be used in the TSPLIB file format for the LKH solver
 	void PrintLKHData();
+	// Prints out the data to be used in the TSPLIB file format for the LKH solver for the vertices in lst
+	void PrintLKHData(std::vector<Vertex*> &lst);
 	// Prints out the data to be used in the TSPLIB file format for the LKH solver where the weight between a and b is 0
 	void PrintLKHDataFHPP(int a, int b);
 	// Clears the adjacency matrix (resets all to false) (if adjacency matrix was created)

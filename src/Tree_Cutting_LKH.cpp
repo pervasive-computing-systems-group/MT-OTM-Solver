@@ -80,7 +80,7 @@ void Tree_Cutting_LKH::RunAlgorithm(Solution* solution) {
 
 	if(TCUT_LKH_DEBUG)
 		printf("Running LKH\n");
-	std::system("./LKH-3.0.6/LKH FixedHPP.par");
+	std::system("LKH FixedHPP.par");
 
 	if(TCUT_LKH_DEBUG)
 		printf("Found the following solution:\n");
