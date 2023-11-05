@@ -50,6 +50,7 @@ add_executable(mt-otm-solver
 	src/KMeans_Partitioner.cpp
 	src/Partitioner.cpp
 	src/Path_Planner.cpp
+	src/PathTSP_LKH.cpp
 	src/PathTSP_MIP_PathPlanner.cpp
 	src/Random_PathPlanner.cpp
 	src/Roots.cpp

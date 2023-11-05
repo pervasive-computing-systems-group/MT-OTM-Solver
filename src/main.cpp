@@ -14,6 +14,7 @@
 #include "Short_Horizons.h"
 #include "KMeans_Partitioner.h"
 #include "FMdMtHPP_NLP.h"
+#include "PathTSP_LKH.h"
 
 #define DEFAULT_ALGORITHM	1
 #define DEFAULT_NUM_UAVS	1
@@ -281,6 +282,7 @@ int main(int argc, char** argv) {
 
 	// Select a path-planning algorithm
 	PathTSP_MIP_PathPlanner pTSP_MIP;
+	PathTSP_LKH pTSP_LKH;
 
 	// Select a hybrid method
 	FMdMtHPP_NLP minTime_NLP;
@@ -298,6 +300,10 @@ int main(int argc, char** argv) {
 
 	case 3: // NLP
 		solver = new Solver(&minTime_NLP);
+		break;
+
+	case 4:	// k-TSP
+		solver = new Solver(&kmeanPar, &pTSP_LKH);
 		break;
 
 	default:
@@ -370,6 +376,8 @@ int main(int argc, char** argv) {
 
 	// 3. return best-found-P, t_tot
 	bestSolution->PrintSolution();
+	bestSolution->PrintGraph();
+
 	printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
 	double duration_s = (double)duration/1000.0;
 
