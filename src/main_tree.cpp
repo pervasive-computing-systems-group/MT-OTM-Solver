@@ -14,6 +14,7 @@
 #include "TotalPath_Follower.h"
 #include "Tree_Cutting.h"
 #include "Tree_Cutting_LKH.h"
+#include "Tree_Cut_LKH_Mv.h"
 
 #define DEFAULT_ALGORITHM	1
 #define DEFAULT_V_FLAG		E_VelocityFlag::e_NotFixed
@@ -93,6 +94,7 @@ int main(int argc, char** argv) {
 	TotalPath_Follower tpfAlg;
 	Tree_Cutting tfAlg;
 	Tree_Cutting_LKH tf_LKH_Alg;
+	Tree_Cut_LKH_Mv tcLKHMv;
 
 	// Create a solver object, which performs step 1 and 2.3/2.4
 	switch(algApproach) {
@@ -106,6 +108,10 @@ int main(int argc, char** argv) {
 
 	case 3:	// Tree-cutting algorithm with LKH heuristic
 		solver = new Solver(&tf_LKH_Alg);
+		break;
+
+	case 4:	// Tree-cutting + LKH with dynamic depot/terminal
+		solver = new Solver(&tcLKHMv);
 		break;
 
 	default:

@@ -83,6 +83,7 @@ add_executable(tree-solve
 	src/Solution.cpp
 	src/Short_Horizons.cpp
 	src/TotalPath_Follower.cpp
+	src/Tree_Cut_LKH_Mv.cpp
 	src/Tree_Cutting.cpp
 	src/Tree_Cutting_LKH.cpp
 	src/Tree_Solver.cpp

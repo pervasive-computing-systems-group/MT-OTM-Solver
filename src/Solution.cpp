@@ -622,10 +622,13 @@ Solution::~Solution() {
 // Build complete solution
 bool Solution::BuildCompleteSolution(std::vector<std::list<Vertex*>>& tours, std::vector<float>& speeds) {
 	// Verify that we should be completing this solution
-	if(this->m_bSetup) {
-		// Already complete solution... return false!
-		return false;
-	}
+//	if(this->m_bSetup) {
+//		// Already complete solution... return false!
+//		return false;
+//	}
+
+	if(DEBUG_SOLUTION)
+		printf("Building Complete Solution\n");
 
 	// Clear the old adjacency matrix
 	if(m_pAdjMatrix != NULL) {
@@ -642,6 +645,9 @@ bool Solution::BuildCompleteSolution(std::vector<std::list<Vertex*>>& tours, std
 	m_nNumVertices =  (2 * m_nM) + m_nN;
 	m_bFeasible = true;
 
+	if(DEBUG_SOLUTION)
+		printf(" Solution has N = %d, M = %d, num-vert = %d\n", m_nN, m_nM, m_nNumVertices);
+
 	// Allocate memory for new adjacency matrix
 	m_pAdjMatrix = new bool*[m_nNumVertices];
 	for(int i = 0; i < m_nNumVertices; i++) {
@@ -650,6 +656,36 @@ bool Solution::BuildCompleteSolution(std::vector<std::list<Vertex*>>& tours, std
 			m_pAdjMatrix[i][j] = false;
 		}
 	}
+
+	// Determine tour start/end times
+	if(DEBUG_SOLUTION)
+		printf(" Setting depot/terminal times\n");
+	m_Td_k.clear();
+	m_Tt_k.clear();
+	for(int k = 0; k < tours.size(); k++) {
+		// Set start time...
+		Vertex* prev = tours.at(k).front();
+		double start_time = m_tBSTrajectory.getTimeAt(prev->fX, prev->fY);
+		m_Td_k.push_back(start_time);
+		if(DEBUG_SOLUTION)
+			printf("  Depot time = %.3f\n", start_time);
+
+		// Determine time to run tour based on distance
+		double tour_dist = 0;
+		for(Vertex* v : tours.at(k)) {
+			tour_dist += prev->GetDistanceTo(v);
+			prev = v;
+		}
+		double subtour_time = tour_dist/speeds.at(k);
+
+		// Determine terminal time
+		double end_time = start_time + subtour_time;
+		m_Tt_k.push_back(end_time);
+
+		if(DEBUG_SOLUTION)
+			printf("  Terminal time = %.3f\n", end_time);
+	}
+
 
 	// Create vertices
 	Vertex* pVertexData = new Vertex[m_nNumVertices];
@@ -667,6 +703,9 @@ bool Solution::BuildCompleteSolution(std::vector<std::list<Vertex*>>& tours, std
 				// Add last_wp -> id to adjacency matrix
 				int a = (prev_wp < id) ? prev_wp : id;
 				int b = (prev_wp >= id) ? prev_wp : id;
+				if(DEBUG_SOLUTION)
+					printf(" Setting %d,%d = true\n", a, b);
+
 				m_pAdjMatrix[a][b] = true;
 			}
 
