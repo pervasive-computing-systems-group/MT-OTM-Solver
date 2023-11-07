@@ -3,14 +3,14 @@ import math
 import os
 import random
 
-FILE_PATH = "test_cRand/"
+FILE_PATH = "Test_Set_03/"
 RADIUS = 30.0
-NUM_PLOTS = 3
-N = 75
+NUM_PLOTS = 50
+N = 25
 
 # Fixed Plot Values
 FIXED_PLOTS = False
-FIXED_PLOT_SHIP_VELOCITY = 1.5
+FIXED_PLOT_SHIP_VELOCITY = 2.5
 FIXED_PLOT_INCREMENT = 20
 FIXED_PLOT_MIN_POINTS = 60
 
@@ -28,13 +28,22 @@ VELOCITY_MAX = 7.50
 # RADIUS_MAX = 25
 # VELOCITY_MAX = 2.0
 
-# Completely Random plots
+# # Test-set 2
+# VELOCITY_FIXED = 2.5
+# UPPER_X_LIMIT = 0
+# LOWER_X_LIMIT = -50
+# UPPER_Y_LIMIT = 500
+# LOWER_Y_LIMIT = -500
+# STEP_SIZE = 250
+
+# Test-set 3
 COMPLETELY_RANDOM = True
 VELOCITY_FIXED = 2.5
-UPPER_X_LIMIT = 1500
-LOWER_X_LIMIT = -150
-UPPER_Y_LIMIT = 250
-LOWER_Y_LIMIT = -250
+UPPER_X_LIMIT = 0
+LOWER_X_LIMIT = -50
+UPPER_Y_LIMIT = 200
+LOWER_Y_LIMIT = -200
+STEP_SIZE = 80
 
 
 def normal_plot(num_points, radius_coverage, file):
@@ -229,4 +238,9 @@ def main(num_plots, num_points):
 
 
 if __name__ == '__main__':
-    main(NUM_PLOTS, N)
+    UPPER_X_LIMIT = 0
+    for x in range(30):
+        n = 5 + 5*x
+        UPPER_X_LIMIT += STEP_SIZE
+        print(n, UPPER_X_LIMIT)
+        main(NUM_PLOTS, n)
