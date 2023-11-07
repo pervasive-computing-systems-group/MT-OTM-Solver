@@ -20,6 +20,7 @@ Solution::Solution(std::string graph_path) {
 	m_bSetup = false;
 	m_bFeasible = false;
 	m_bInheritedSpeeds = true;
+	m_fR = 0;
 
 	// Open file with coordinates
 	std::ifstream file(graph_path);
@@ -31,9 +32,6 @@ Solution::Solution(std::string graph_path) {
 	int n;
 	lineStreamN >> n;
 	m_nN = n;
-	float r;
-	lineStreamN >> r;
-	m_fR = r;
 	m_nNumVertices = (2 * m_nM) + m_nN;
 	if(DEBUG_SOLUTION)
 		printf("Building graph of n: %d, m: %d, R: %f\n", m_nN, m_nM, m_fR);
@@ -179,6 +177,7 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 	m_bSolved = false;
 	m_bPartitioned = false;
 	m_bSetup = false;
+	m_fR = 0;
 
 	// Open file with coordinates
 	std::ifstream file(graph_path);
@@ -190,9 +189,6 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 	int n;
 	lineStreamN >> n;
 	m_nN = n;
-	float r;
-	lineStreamN >> r;
-	m_fR = r;
 	m_nNumVertices = (2 * m_nM) + m_nN;
 	if(DEBUG_SOLUTION)
 		printf("Graph of n: %d, m: %d, R: %f\n", m_nN, m_nM, m_fR);
@@ -400,6 +396,7 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 	m_bSetup = false;
 	m_bFeasible = true;
 	m_bInheritedSpeeds = false;
+	m_fR = 0;
 
 	// Open file with coordinates
 	std::ifstream file(graph_path);
@@ -411,9 +408,6 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 	int n;
 	lineStreamN >> n;
 	m_nN = n;
-	float r;
-	lineStreamN >> r;
-	m_fR = r;
 	m_nNumVertices = (2 * m_nM) + m_nN;
 	if(DEBUG_SOLUTION)
 		printf("Graph of n: %d, m: %d, R: %f\n", m_nN, m_nM, m_fR);
@@ -1436,13 +1430,17 @@ Vertex* Solution::GetTerminalOfPartion(int p) {
 // Determines if this solution is feasible given n, m, and radios R
 bool Solution::IsFeasible() {
 	// Determine the minimum size of the largest partition
-	float minMaxPartSize = GetMinSpanningForestDistance() / (float)m_nM;
+	float minMaxPartSize = GetMinSpanningForestDistanceRND() / (float)m_nM;
 
 	return (DIST_MAX >= minMaxPartSize) && m_bFeasible;
 }
 
 // Returns the distance of a minimum spanning constrained forest containing m trees.
 float Solution::GetMinSpanningForestDistance(bool findForest) {
+	// This is deprecated code!! Assumes we are using a tessellation graph
+	fprintf(stderr,"[ERROR] : Solution::GetMinSpanningForestDistance() : Deprecated function!\n");
+	exit(1);
+
 	/*
 	 * General idea here: The forest  must connect every depot and terminal to at least
 	 * one destination vertex, therefore the forest will contain (n-1) - m edges of length
@@ -1559,32 +1557,39 @@ void union1(int id[10], int x, int y)
 }
 
 /*
- * Returns the distance of a minimum spanning forest containing m trees. This should be used on
- * random graph-types!
+ * Returns a lower bound on the minimum spanning forest containing m trees.
  */
 float Solution::GetMinSpanningForestDistanceRND() {
-	// Initially, id[i] = i;
-	int id[10], nodes, edges;
-	// Edges array, <weight, <v, u>>
-	std::pair <long long, std::pair<int, int> > p[10];
-	int x, y;
-	long long cost, minimumCost = 0;
-	// Sort the edges in the ascending order
-	sort(p, p + edges);
-	for(int i = 0; i < edges; ++i) {
-		// Selecting edges one by one in increasing order from the beginning
-		x = p[i].second.first;
-		y = p[i].second.second;
-		cost = p[i].first;
-		// Check if the selected edge is creating a cycle or not
-		if(root(id, x) != root(id, y)) {
-			minimumCost += cost;
-			union1(id, x, y);
+	// Put all edge lengths into an array
+	std::vector<double> edge_lens;
+	for(int i = 0; i < m_nN; i++) {
+		for(int j = 0; j < m_nN; j++) {
+			if(i != j) {
+				edge_lens.push_back((m_pVertexData + i)->GetDistanceTo(m_pVertexData + j));
+			}
 		}
 	}
-	return minimumCost;
 
-	return 0;
+	// Sort lengths
+	sort(edge_lens.begin(), edge_lens.end());
+
+	// Sanity print
+	if(DEBUG_SOLUTION) {
+		printf("Sorted edge lengths:\n");
+		for(double f : edge_lens) {
+			printf(" %f", f);
+		}
+		printf("\n");
+	}
+
+	// Min spanning tree has n-1 edges - min spanning forest with m trees will have n-m edges
+	int num_edges = m_nN - m_nM;
+	double min_dist = 0;
+	for(int i = 0; i < num_edges; i++) {
+		min_dist += edge_lens.at(i);
+	}
+
+	return min_dist;
 }
 
 /*

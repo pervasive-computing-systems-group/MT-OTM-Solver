@@ -85,8 +85,7 @@ public:
 	 */
 	float GetMinSpanningForestDistance(bool findForest = false);
 	/*
-	 * Returns the distance of a minimum spanning forest containing m trees. This should be used on
-	 * random graph-types!
+	 * Returns a lower bound on the minimum spanning forest containing m trees.
 	 */
 	float GetMinSpanningForestDistanceRND();
 	// Returns the baseline time to run through the minimum spanning constrained forest
