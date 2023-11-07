@@ -150,6 +150,7 @@ void Solution_Multi::classConstructor(std::string graph_path, int m, int numUAVs
 	m_bSetup = false;
 	m_bFeasible = true;
 	m_bInheritedSpeeds = false;
+	m_fR = 0;
 
 	// Open file with coordinates
 	std::ifstream file(graph_path);
@@ -161,9 +162,6 @@ void Solution_Multi::classConstructor(std::string graph_path, int m, int numUAVs
 	int n;
 	lineStreamN >> n;
 	m_nN = n;
-	float r;
-	lineStreamN >> r;
-	m_fR = r;
 	m_nNumVertices = (2 * m_nM) + m_nN;
 	if(DEBUG_MULT_SOLUTION)
 		printf("Graph of n: %d, m: %d, R: %f\n", m_nN, m_nM, m_fR);
@@ -185,17 +183,43 @@ void Solution_Multi::classConstructor(std::string graph_path, int m, int numUAVs
 		m_pVertexData[i].eVType = E_VertexType::e_Destination;
 	}
 
-	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
+	/*
+	 * Read trajectory of UGV, expected:
+	 *
+	 * movement-type
+	 * start-x start-y
+	 * const const ...
+	 *
+	 * The number of constants depends on the movement type
+	 */
+	std::getline(file, line);
+	std::stringstream lineStreamUGVType(line);
+	int movement_type;
+	lineStreamUGVType >> movement_type;
 	std::getline(file, line);
 	std::stringstream lineStreamBSxy(line);
 	lineStreamBSxy >> x >> y;
-	float x_1, y_1;
 	std::getline(file, line);
 	std::stringstream lineStreamBSTraj(line);
-	lineStreamBSTraj >> x_1 >> y_1;
-
-	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
+	if(movement_type == E_TrajFuncType::e_StraightLine) {
+		// Only expecting two constants
+		float x_1, y_1;
+		lineStreamBSTraj >> x_1 >> y_1;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, x_1, y_1, E_TrajFuncType::e_StraightLine);
+	}
+	else if(movement_type == E_TrajFuncType::e_Sinusoidal) {
+		// Expecting three constants
+		float a, b, c;
+		lineStreamBSTraj >> a >> b >> c;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, a, b, c, E_TrajFuncType::e_Sinusoidal);
+	}
+	else {
+		// We haven't implemented that...
+		fprintf(stderr,"[ERROR] Solution_Multi::classConstructor() : Given non-implemented UGV trajectory : %d\n", movement_type);
+		exit(1);
+	}
 
 	// Done reading data, close file
 	file.close();

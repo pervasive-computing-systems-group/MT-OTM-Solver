@@ -83,6 +83,12 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 	// Y-coordinate of terminal k
 	GRBVar* Yt_k = new GRBVar[M];
 
+	// Needed if we use a sin function for UGV path
+	GRBVar* Zf_d_k = new GRBVar[M];
+	GRBVar* Zf_t_k = new GRBVar[M];
+	GRBVar* Zr_d_k = new GRBVar[M];
+	GRBVar* Zr_t_k = new GRBVar[M];
+
 
 	try {
 		// Create Gurobi environment
@@ -260,6 +266,61 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 				y_expr += Tt_k[k]*solution->m_tBSTrajectory.mY - Yt_k[k];
 				// Add constraint to solver
 				model.addConstr(y_expr == 0, "Yt_"+itos(k));
+			}
+
+			break;
+
+		case E_TrajFuncType::e_Sinusoidal:
+			// Add auxiliary variables
+			for(int k = 0; k < M; k++) {
+				Zf_d_k[k] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "Zf_d_k" + itos(k));
+				Zf_t_k[k] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "Zf_t_k" + itos(k));
+				Zr_d_k[k] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "Zr_d_k" + itos(k));
+				Zr_t_k[k] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "Zr_t_k" + itos(k));
+			}
+
+			// For each depot k
+			for(int k = 0; k < M; k++) {
+				/// x = a t, y = b sin((2pi t)/c)
+				// Constrain X-coord
+				GRBLinExpr x_expr = 0;
+				x_expr += Td_k[k]*solution->m_tBSTrajectory.mX - Xd_k[k];
+				// Add constraint to solver
+				model.addConstr(x_expr == 0, "Xd_"+itos(k));
+
+				/// Constrain Y-coord
+				// Zf_d_k = (2pi t)/c
+				GRBLinExpr Zf_d_expr = 0;
+				Zf_d_expr += (2*PI*Td_k[k])/solution->m_tBSTrajectory.mC - Zf_d_k[k];
+				model.addConstr(Zf_d_expr == 0, "Zf_d_expr_"+itos(k));
+				// Zr_d_k = y/b
+				GRBLinExpr Zr_d_expr = 0;
+				Zr_d_expr += Yd_k[k]/solution->m_tBSTrajectory.mY - Zr_d_k[k];
+				model.addConstr(Zr_d_expr == 0, "Zr_d_expr_"+itos(k));
+				// Add actual y constraint
+				model.addGenConstrSin(Zf_d_k[k], Zr_d_k[k], "Yd_"+itos(k));
+			}
+
+			// For each terminal k
+			for(int k = 0; k < M; k++) {
+				/// x = a t, y = b sin((2pi t)/c)
+				// Constrain X-coord
+				GRBLinExpr x_expr = 0;
+				x_expr += Tt_k[k]*solution->m_tBSTrajectory.mX - Xt_k[k];
+				// Add constraint to solver
+				model.addConstr(x_expr == 0, "Xt_"+itos(k));
+
+				/// Constrain Y-coord
+				// Zf_d_k = (2pi t)/c
+				GRBLinExpr Zf_t_expr = 0;
+				Zf_t_expr += (2*PI*Tt_k[k])/solution->m_tBSTrajectory.mC - Zf_t_k[k];
+				model.addConstr(Zf_t_expr == 0, "Zf_t_expr_"+itos(k));
+				// Zr_d_k = y/b
+				GRBLinExpr Zr_t_expr = 0;
+				Zr_t_expr += Yt_k[k]/solution->m_tBSTrajectory.mY - Zr_t_k[k];
+				model.addConstr(Zr_t_expr == 0, "Zr_t_expr_"+itos(k));
+				// Add actual y constraint
+				model.addGenConstrSin(Zf_t_k[k], Zr_t_k[k], "Yt_"+itos(k));
 			}
 
 			break;

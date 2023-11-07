@@ -9,6 +9,9 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+
 #include "defines.h"
 
 
@@ -18,6 +21,7 @@ public:
 	UGVTrajectory(const UGVTrajectory& traj);
 
 	void configTrajectory(float f_x, float f_y, float f_mX, float f_mY, E_TrajFuncType type);
+	void configTrajectory(float f_x, float f_y, float f_mA, float f_mB, float f_mC, E_TrajFuncType type);
 	// Determines the closest point along the trajectory of the UGV (x_u, y_u) to the given point (x_g, y_g)
 	void ClostestPoint(double x_g, double y_g, double* x_u, double* y_u);
 	// Gets point along the trajectory of the UGV (x_u, y_u) at time t
@@ -32,8 +36,9 @@ public:
 
 	float x;
 	float y;
-	float mX;
-	float mY;
+	float mX; // A
+	float mY; // B
+	float mC; // C
 	E_TrajFuncType pd_type;
 
 private:

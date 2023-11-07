@@ -9,6 +9,9 @@ Solution::Solution() {
  * the future base station positions are based off of this guess.
  */
 Solution::Solution(std::string graph_path) {
+	if(DEBUG_SOLUTION)
+		printf("Input Graph File %s\n", graph_path.c_str());
+
 	m_pAdjMatrix = NULL;
 	m_nM = 1;
 	m_bHasTree = false;
@@ -71,24 +74,64 @@ Solution::Solution(std::string graph_path) {
 	// Increment i
 	i++;
 
-	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
+	/*
+	 * Read trajectory of UGV, expected:
+	 *
+	 * movement-type
+	 * start-x start-y
+	 * const const ...
+	 *
+	 * The number of constants depends on the movement type
+	 */
+	std::getline(file, line);
+	std::stringstream lineStreamUGVType(line);
+	int movement_type;
+	lineStreamUGVType >> movement_type;
 	std::getline(file, line);
 	std::stringstream lineStreamBSxy(line);
 	lineStreamBSxy >> x >> y;
-	float x_1, y_1;
 	std::getline(file, line);
 	std::stringstream lineStreamBSTraj(line);
-	lineStreamBSTraj >> x_1 >> y_1;
-
-	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
-
-	// Create initial base station
-	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
-		// The following assumes a linear UGV... hard fail
-		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
-		exit(0);
+	if(movement_type == E_TrajFuncType::e_StraightLine) {
+		// Only expecting two constants
+		float x_1, y_1;
+		lineStreamBSTraj >> x_1 >> y_1;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, x_1, y_1, E_TrajFuncType::e_StraightLine);
+		if(DEBUG_SOLUTION)
+			printf(" Set UGV trajectory: (%f, %f), v = [%f, %f]", x, y, x_1, y_1);
 	}
+	else if(movement_type == E_TrajFuncType::e_Sinusoidal) {
+		// Expecting three constants
+		float a, b, c;
+		lineStreamBSTraj >> a >> b >> c;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, a, b, c, E_TrajFuncType::e_Sinusoidal);
+	}
+	else {
+		// We haven't implemented that...
+		fprintf(stderr,"[ERROR] Solution::Solution() I : Given non-implemented UGV trajectory : %d\n", movement_type);
+		exit(1);
+	}
+
+//	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
+//	std::getline(file, line);
+//	std::stringstream lineStreamBSxy(line);
+//	lineStreamBSxy >> x >> y;
+//	float x_1, y_1;
+//	std::getline(file, line);
+//	std::stringstream lineStreamBSTraj(line);
+//	lineStreamBSTraj >> x_1 >> y_1;
+//
+//	// Save base station info in base station trajectory struct
+//	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
+//
+//	// Create initial base station
+//	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+//		// The following assumes a linear UGV... hard fail
+//		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
+//		exit(0);
+//	}
 	m_pVertexData[i].nID = i;
 	m_pVertexData[i].fX = m_tBSTrajectory.x;
 	m_pVertexData[i].fY = m_tBSTrajectory.y;
@@ -172,17 +215,55 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 		m_pVertexData[i].eVType = E_VertexType::e_Destination;
 	}
 
-	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
+	/*
+	 * Read trajectory of UGV, expected:
+	 *
+	 * movement-type
+	 * start-x start-y
+	 * const const ...
+	 *
+	 * The number of constants depends on the movement type
+	 */
+	std::getline(file, line);
+	std::stringstream lineStreamUGVType(line);
+	int movement_type;
+	lineStreamUGVType >> movement_type;
 	std::getline(file, line);
 	std::stringstream lineStreamBSxy(line);
 	lineStreamBSxy >> x >> y;
-	float x_1, y_1;
 	std::getline(file, line);
 	std::stringstream lineStreamBSTraj(line);
-	lineStreamBSTraj >> x_1 >> y_1;
+	if(movement_type == E_TrajFuncType::e_StraightLine) {
+		// Only expecting two constants
+		float x_1, y_1;
+		lineStreamBSTraj >> x_1 >> y_1;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, x_1, y_1, E_TrajFuncType::e_StraightLine);
+	}
+	else if(movement_type == E_TrajFuncType::e_Sinusoidal) {
+		// Expecting three constants
+		float a, b, c;
+		lineStreamBSTraj >> a >> b >> c;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, a, b, c, E_TrajFuncType::e_Sinusoidal);
+	}
+	else {
+		// We haven't implemented that...
+		fprintf(stderr,"[ERROR] Solution::Solution() II : Given non-implemented UGV trajectory : %d\n", movement_type);
+		exit(1);
+	}
 
-	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
+//	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
+//	std::getline(file, line);
+//	std::stringstream lineStreamBSxy(line);
+//	lineStreamBSxy >> x >> y;
+//	float x_1, y_1;
+//	std::getline(file, line);
+//	std::stringstream lineStreamBSTraj(line);
+//	lineStreamBSTraj >> x_1 >> y_1;
+//
+//	// Save base station info in base station trajectory struct
+//	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Done reading data, close file
 	file.close();
@@ -354,17 +435,55 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 		m_pVertexData[i].eVType = E_VertexType::e_Destination;
 	}
 
-	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
+	/*
+	 * Read trajectory of UGV, expected:
+	 *
+	 * movement-type
+	 * start-x start-y
+	 * const const ...
+	 *
+	 * The number of constants depends on the movement type
+	 */
+	std::getline(file, line);
+	std::stringstream lineStreamUGVType(line);
+	int movement_type;
+	lineStreamUGVType >> movement_type;
 	std::getline(file, line);
 	std::stringstream lineStreamBSxy(line);
 	lineStreamBSxy >> x >> y;
-	float x_1, y_1;
 	std::getline(file, line);
 	std::stringstream lineStreamBSTraj(line);
-	lineStreamBSTraj >> x_1 >> y_1;
+	if(movement_type == E_TrajFuncType::e_StraightLine) {
+		// Only expecting two constants
+		float x_1, y_1;
+		lineStreamBSTraj >> x_1 >> y_1;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, x_1, y_1, E_TrajFuncType::e_StraightLine);
+	}
+	else if(movement_type == E_TrajFuncType::e_Sinusoidal) {
+		// Expecting three constants
+		float a, b, c;
+		lineStreamBSTraj >> a >> b >> c;
+		// Save base station info in base station trajectory struct
+		m_tBSTrajectory.configTrajectory(x, y, a, b, c, E_TrajFuncType::e_Sinusoidal);
+	}
+	else {
+		// We haven't implemented that...
+		fprintf(stderr,"[ERROR] Solution::Solution() III : Given non-implemented UGV trajectory : %d\n", movement_type);
+		exit(1);
+	}
 
-	// Save base station info in base station trajectory struct
-	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
+//	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
+//	std::getline(file, line);
+//	std::stringstream lineStreamBSxy(line);
+//	lineStreamBSxy >> x >> y;
+//	float x_1, y_1;
+//	std::getline(file, line);
+//	std::stringstream lineStreamBSTraj(line);
+//	lineStreamBSTraj >> x_1 >> y_1;
+//
+//	// Save base station info in base station trajectory struct
+//	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Done reading data, close file
 	file.close();

@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 		break;
 
 	default:
-		solver = new Solver(&moveGV_NLP);
+		solver = new Solver(&kTSPshft);
 	}
 
 	// Capture start time
