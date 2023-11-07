@@ -112,24 +112,6 @@ Solution::Solution(std::string graph_path) {
 		exit(1);
 	}
 
-//	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
-//	std::getline(file, line);
-//	std::stringstream lineStreamBSxy(line);
-//	lineStreamBSxy >> x >> y;
-//	float x_1, y_1;
-//	std::getline(file, line);
-//	std::stringstream lineStreamBSTraj(line);
-//	lineStreamBSTraj >> x_1 >> y_1;
-//
-//	// Save base station info in base station trajectory struct
-//	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
-//
-//	// Create initial base station
-//	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
-//		// The following assumes a linear UGV... hard fail
-//		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
-//		exit(0);
-//	}
 	m_pVertexData[i].nID = i;
 	m_pVertexData[i].fX = m_tBSTrajectory.x;
 	m_pVertexData[i].fY = m_tBSTrajectory.y;
@@ -248,18 +230,6 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 		fprintf(stderr,"[ERROR] Solution::Solution() II : Given non-implemented UGV trajectory : %d\n", movement_type);
 		exit(1);
 	}
-
-//	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
-//	std::getline(file, line);
-//	std::stringstream lineStreamBSxy(line);
-//	lineStreamBSxy >> x >> y;
-//	float x_1, y_1;
-//	std::getline(file, line);
-//	std::stringstream lineStreamBSTraj(line);
-//	lineStreamBSTraj >> x_1 >> y_1;
-//
-//	// Save base station info in base station trajectory struct
-//	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Done reading data, close file
 	file.close();
@@ -466,18 +436,6 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 		fprintf(stderr,"[ERROR] Solution::Solution() III : Given non-implemented UGV trajectory : %d\n", movement_type);
 		exit(1);
 	}
-
-//	// Read trajectory of base station (start x, y and trajectory vector x_1, y_1)
-//	std::getline(file, line);
-//	std::stringstream lineStreamBSxy(line);
-//	lineStreamBSxy >> x >> y;
-//	float x_1, y_1;
-//	std::getline(file, line);
-//	std::stringstream lineStreamBSTraj(line);
-//	lineStreamBSTraj >> x_1 >> y_1;
-//
-//	// Save base station info in base station trajectory struct
-//	m_tBSTrajectory.configTrajectory(x,y,x_1,y_1,E_TrajFuncType::e_StraightLine);
 
 	// Done reading data, close file
 	file.close();
@@ -1602,7 +1560,7 @@ float Solution::GetMinSpanningForestRT(bool findForest) {
 		printf("Calculating Min-Spanning-Constrained-Forest Runtime for m = %d\n", m_nM);
 
 	// We assume an even split of the tree
-	float legDist = GetMinSpanningForestDistance(findForest) / (float)m_nM;
+	float legDist = GetMinSpanningForestDistanceRND() / (float)m_nM;
 
 	if(SANITY_PRINT)
 		printf(" legDist = %f\n", legDist);
