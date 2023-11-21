@@ -24,7 +24,7 @@
 #include "UGVTrajectory.h"
 
 // Allows for solution specific debugging
-#define DEBUG_SOLUTION	1 || DEBUG
+#define DEBUG_SOLUTION	0 || DEBUG
 #define PRINT_SOLUTION	0 || DEBUG
 // Allowable sub-tour distance tolerance
 #define ST_DIST_TOLERANCE		1

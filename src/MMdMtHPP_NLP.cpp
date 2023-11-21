@@ -327,8 +327,8 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 
 		default:
 			// Un-implemented UGV function p_d()
-			printf("[ERROR] : MMdMtHPP_NLP::RunAlgorithm : Given non-linear UGV, expected linear\n");
-			exit(0);
+			fprintf(stderr, "[ERROR] : MMdMtHPP_NLP::RunAlgorithm : Given non-linear UGV, expected linear\n");
+			exit(1);
 		}
 
 		// Bound on launch (depot) time - start at k=1

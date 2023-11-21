@@ -20,7 +20,7 @@
 #include "Solution.h"
 
 // Allows for solution specific debugging
-#define DEBUG_MULT_SOLUTION		1 || DEBUG
+#define DEBUG_MULT_SOLUTION		0 || DEBUG
 #define PRINT_MULT_SOLUTION		0 || DEBUG
 
 

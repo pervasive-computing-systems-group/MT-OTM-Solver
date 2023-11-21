@@ -15,7 +15,7 @@
 
 // Project-wide debug flag
 #define DEBUG			0
-#define SANITY_PRINT	1 || DEBUG
+#define SANITY_PRINT	0 || DEBUG
 
 // The length of each triangle side
 #define PI			3.14159265

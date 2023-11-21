@@ -20,7 +20,7 @@
 #include "gurobi_c++.h"
 
 
-#define DEBUG_MUGV_NLP		1 || DEBUG
+#define DEBUG_MUGV_NLP		0 || DEBUG
 
 class MMdMtHPP_NLP : public Hybrid_Planner {
 public:

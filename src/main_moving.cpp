@@ -27,51 +27,46 @@
 // Run MT-OTM algorithm
 int main(int argc, char** argv) {
 	int algApproach;
-	int numUAVs;
 	const char* filePath;
 	E_VelocityFlag velocity_flag;
 	bool printData;
 	const char* outputPath;
 
-	if(argc == 7) {
+	if(argc == 6) {
 		algApproach = atoi(argv[1]);
-		numUAVs = atoi(argv[2]);
-		filePath = argv[3];
-		velocity_flag = (E_VelocityFlag)atoi(argv[4]);
-		printData = atoi(argv[5]);
-		outputPath = argv[6];
-	}
-	else if(argc == 6) {
-		algApproach = atoi(argv[1]);
-		numUAVs = atoi(argv[2]);
-		filePath = argv[3];
-		velocity_flag = (E_VelocityFlag)atoi(argv[4]);
-		printData = atoi(argv[5]);
-		outputPath = DEFAULT_DATA_LOG_LOCATION;
+		filePath = argv[2];
+		velocity_flag = (E_VelocityFlag)atoi(argv[3]);
+		printData = atoi(argv[4]);
+		outputPath = argv[5];
 	}
 	else if(argc == 5) {
 		algApproach = atoi(argv[1]);
-		numUAVs = atoi(argv[2]);
-		filePath = argv[3];
-		velocity_flag = (E_VelocityFlag)atoi(argv[4]);
-		printData = DEFAULT_DATA_LOG;
+		filePath = argv[2];
+		velocity_flag = (E_VelocityFlag)atoi(argv[3]);
+		printData = atoi(argv[4]);
 		outputPath = DEFAULT_DATA_LOG_LOCATION;
 	}
 	else if(argc == 4) {
 		algApproach = atoi(argv[1]);
-		numUAVs = atoi(argv[2]);
-		filePath = argv[3];
+		filePath = argv[2];
+		velocity_flag = (E_VelocityFlag)atoi(argv[3]);
+		printData = DEFAULT_DATA_LOG;
+		outputPath = DEFAULT_DATA_LOG_LOCATION;
+	}
+	else if(argc == 3) {
+		algApproach = atoi(argv[1]);
+		filePath = argv[2];
 		velocity_flag = DEFAULT_V_FLAG;
 		printData = DEFAULT_DATA_LOG;
 		outputPath = DEFAULT_DATA_LOG_LOCATION;
 	}
 	else {
-		printf("Expected 3 ~ 6 arguments:\n (1) Algorithm approach\n (2) Number of UAVs\n (3) File path to plot data\n (4) [OPTIONAL] Velocity flag\n (5) [OPTIONAL] \"0\" for no data logging, \"1\" for data logging\n (6) [OPTIONAL] File path for output\n\n");
+		printf("Expected 2 ~ 5 arguments:\n (1) Algorithm approach\n (3) File path to plot data\n (4) [OPTIONAL] Velocity flag\n (5) [OPTIONAL] \"0\" for no data logging, \"1\" for data logging\n (6) [OPTIONAL] File path for output\n\n");
 
 		exit(0);
 	}
 
-	printf("\n\n** Running Min-Time OTM algorithm with approach %d with %d UAVs**\n\n", algApproach, numUAVs);
+	printf("\n\n** Running Min-Time OTM algorithm with approach %d **\n\n", algApproach);
 
 	Solver* solver;
 
@@ -116,7 +111,7 @@ int main(int argc, char** argv) {
 		m += 1;
 
 		// Make a solution with m subtours
-		Solution_Multi* retSolution =  new Solution_Multi(filePath, m, numUAVs, 0.0);
+		Solution_Multi* retSolution =  new Solution_Multi(filePath, m, 1, 0.0);
 
 		printf("\nRunning Multi-OTM solver with m = %d\n", m);
 		// Solve path-planning
