@@ -18,7 +18,7 @@
 #include "Path_Planner.h"
 #include "gurobi_c++.h"
 
-#define DEBUG_PTSP_LKH	1 || DEBUG
+#define DEBUG_PTSP_LKH	0 || DEBUG
 
 
 class PathTSP_LKH : public Path_Planner {

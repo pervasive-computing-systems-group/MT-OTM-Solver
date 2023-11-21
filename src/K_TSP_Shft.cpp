@@ -24,21 +24,53 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 	/// Run k-means clustering to group together waypoints
 	// Add waypoints to a vector
 	std::vector<KMPoint> points;
-	for(int i = 0; i < solution->m_nN; i++) {
-		KMPoint pnt(solution->m_pVertexData+i);
-		points.push_back(pnt);
-	}
-
-	// Set centroids to be random waypoints
 	std::vector<KMPoint> centroids;
-	for(int k = 0; k < solution->m_nM; k++) {
-		// Pick a random waypoint
-		int rand_wp = rand() % solution->m_nN;
-		// Set the details of this waypoint as the centroid
-		KMPoint pnt(solution->m_pVertexData[rand_wp].fX, solution->m_pVertexData[rand_wp].fY);
-		pnt.vID = k;
-		// Add centroid to centroid list
-		centroids.push_back(pnt);
+
+
+	{
+		double min_x = std::numeric_limits<double>::max();
+		double max_x = 0;
+		double min_y = std::numeric_limits<double>::max();
+		double max_y = 0;
+		for(int i = 0; i < solution->m_nN; i++) {
+			KMPoint pnt(solution->m_pVertexData+i);
+			points.push_back(pnt);
+
+			// Check min/max x
+			if(solution->m_pVertexData[i].fX < min_x) {
+				min_x = solution->m_pVertexData[i].fX;
+			}
+			if(solution->m_pVertexData[i].fX > max_x) {
+				max_x = solution->m_pVertexData[i].fX;
+			}
+			// Check min/max y
+			if(solution->m_pVertexData[i].fY < min_y) {
+				min_y = solution->m_pVertexData[i].fY;
+			}
+			if(solution->m_pVertexData[i].fY > max_y) {
+				max_y = solution->m_pVertexData[i].fY;
+			}
+		}
+
+		// Set centroid locations
+		for(int k = 0; k < solution->m_nM; k++) {
+			// Pick equal points
+			double step_x = (max_x - min_x)/solution->m_nM;
+			double step_y = (max_y - min_y)/solution->m_nM;
+			// Set centroid at this point
+			KMPoint pnt(min_x + step_x*k, min_y + step_y*k);
+			pnt.vID = k;
+
+//			// Pick a random waypoint
+//			int rand_wp = rand() % solution->m_nN;
+//			// Set the details of this waypoint as the centroid
+//			KMPoint pnt(solution->m_pVertexData[rand_wp].fX, solution->m_pVertexData[rand_wp].fY);
+//			pnt.vID = k;
+
+			// Add centroid to centroid list
+			centroids.push_back(pnt);
+		}
+
 	}
 
 	// Sanity print
@@ -263,27 +295,36 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 	while(tour_changed) {
 		tour_changed = false;
 		outter_counter++;
+		inner_counter = 0;
 		// While still making changes to time...
-		while(changed_times) {
+		while(changed_times && inner_counter < 50) {
 			// Assume we don't restart...
 			changed_times = false;
 			inner_counter++;
 
 			/// Correct tour times based on found solution
 			tour_duration.clear();
+			tour_distance.clear();
 
 			// Sanity print
 			if(DEBUG_K_TSP_SHFT)
 				printf("Correcting start/end times to be consistent with time\n");
-			tour_distance.clear();
 
 			// For each sub-tour
 			for(int k = 0; k < solution->m_nM; k++) {
+				// Initial desired start time based current depot location
+				double start_time = solution->m_tBSTrajectory.getTimeAt(solution->GetDepotOfPartion(k)->fX,
+						solution->GetTerminalOfPartion(k)->fY);
 				if(DEBUG_K_TSP_SHFT)
-					printf(" Tour %d\n", k);
+					printf(" Tour %d - starting @ %.3f\n", k, start_time);
 				double previous_time = 0;
 				double new_time = 0;
 				bool run_again = true;
+
+				bool moving_start = false;
+				double delta_t = 10;
+				double prev_dist = 0;
+
 				// While we keep making updates...
 				while(run_again) {
 					// Determine the distance of the tour
@@ -335,12 +376,6 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					double old_end_time = solution->m_tBSTrajectory.getTimeAt(term_k->fX, term_k->fY);
 					double old_mid_time = (old_end_time - old_start_time)/2 + old_start_time;
 
-					// Verify that we aren't starting earlier than 0
-//					if(old_mid_time - new_time/2.0 < 0.0) {
-//						// Can't start earlier than 0
-//						old_mid_time = new_time/2.0;
-//					}
-
 					// Place the start/end locations of the subtour at mid-time +- 1/2 new-time
 					double depot_x, depot_y;
 					solution->m_tBSTrajectory.getPosition(old_mid_time - new_time/2.0, &depot_x, &depot_y);
@@ -352,7 +387,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					term_k->fY = term_y;
 
 					// Record the start time
-					previous_start_times.at(k) = old_mid_time - new_time/2;
+					previous_start_times.at(k) = solution->m_tBSTrajectory.getTimeAt(depot_k->fX, depot_k->fY);
 
 					// Sanity print
 					if(DEBUG_K_TSP_SHFT)
@@ -360,14 +395,35 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 
 					// While time changed, repeat!
 					if(equalFloats(previous_time, new_time)) {
+						// Can we push this back?
+						// TODO: Verify that this is working...
+						if(dist <= DIST_OPT) {
+							// Push start time back...
+							double new_start_time = previous_start_times.at(k) - delta_t;
 
-						// Sanity print
-						if(DEBUG_K_TSP_SHFT)
-							printf("   * Consistent!\n");
-						tour_duration.push_back(new_time);
-						tour_distance.push_back(dist);
+							// Place the start/end locations of the subtour at mid-time +- 1/2 new-time
+							double depot_x, depot_y;
+							solution->m_tBSTrajectory.getPosition(new_start_time, &depot_x, &depot_y);
+							depot_k->fX = depot_x;
+							depot_k->fY = depot_y;
+							double term_x, term_y;
+							solution->m_tBSTrajectory.getPosition(new_start_time + new_time, &term_x, &term_y);
+							term_k->fX = term_x;
+							term_k->fY = term_y;
 
-						run_again = false;
+							// Sanity print
+							if(DEBUG_K_TSP_SHFT)
+								printf("   Push-back 1: start from %.3f to %.3f\n", previous_start_times.at(k), new_start_time);
+						}
+						else {
+							// Sanity print
+							if(DEBUG_K_TSP_SHFT)
+								printf("   * Consistent!\n");
+							tour_duration.push_back(new_time);
+							tour_distance.push_back(dist);
+
+							run_again = false;
+						}
 					}
 					else {
 						// Sanity print
@@ -387,13 +443,13 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 				// Initial desired start time based current depot location
 				double desired_start_time = solution->m_tBSTrajectory.getTimeAt(solution->GetDepotOfPartion(k)->fX,
 						solution->GetTerminalOfPartion(k)->fY);
-				// Can we try to shift this sub-tour left in time?
-				if(tour_distance.at(k) < DIST_OPT) {
-					// Tour is short... ask for an earlier start time
-					// TODO: come up with a better way to ask for a better time...
-					desired_start_time = desired_start_time - 2;
+//				// Can we try to shift this sub-tour left in time?
+//				if(tour_distance.at(k) < DIST_OPT) {
+//					// Tour is short... ask for an earlier start time
+//					// TODO: come up with a better way to ask for a better time...
+//					desired_start_time = desired_start_time - 2;
 //					desired_start_time = std::max(desired_start_time - 2, 0.0);
-				}
+//				}
 				desired_times.push_back(desired_start_time);
 			}
 
@@ -402,7 +458,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 
 			// Sanity print
 			if(DEBUG_K_TSP_SHFT)
-				printf("Adjusting correcting start/step based on QP\n");
+				printf("Adjusting correcting start/stop based on QP\n");
 
 			// Update depot/terminals
 			for(int k = 0; k < solution->m_nM; k++) {
@@ -428,8 +484,6 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					printf(" %d: depot-(%.3f, %.3f), terminal-(%.3f, %.3f)\n", k, depot_x, depot_y, term_x, term_y);
 			}
 
-			// Sanity print...
-//			solution->PrintGraph();
 			// Sanity print
 			if(DEBUG_K_TSP_SHFT)
 				printf("Comparing start times\n");
@@ -450,7 +504,120 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 				printf("\n** Iteration %d, Changed times? %d**\n\n", inner_counter, changed_times);
 		}
 
-		// Run TSP again
+
+
+
+		/// Verify that we ended with something that is consistent
+		if(changed_times) {
+			if(DEBUG_K_TSP_SHFT)
+				printf("Loop timed-out, fixing sub tours\n");
+
+			// Make sure each tour is at least consistent
+			double earliest_start = 0;
+			tour_duration.clear();
+
+			for(int k = 0; k < solution->m_nM; k++) {
+				if(DEBUG_K_TSP_SHFT)
+					printf(" Tour %d\n", k);
+
+				// Verify that we aren't starting too early
+				Vertex* depot = previous_tours.at(k).front();
+				double start_time = solution->m_tBSTrajectory.getTimeAt(depot->fX, depot->fY);
+				if(start_time < earliest_start) {
+					// Fix this start time
+					if(DEBUG_K_TSP_SHFT)
+						printf("  Fixing start time: %.3f to %.3f\n", start_time, earliest_start);
+					double x,y;
+					solution->m_tBSTrajectory.getPosition(earliest_start, &x, &y);
+					depot->fX = x;
+					depot->fY = y;
+					start_time = earliest_start;
+				}
+
+				// Current terminal position
+				double previous_time = 0;
+				double new_time = 0;
+				bool run_again = true;
+				// While we keep making updates...
+				while(run_again) {
+					// Determine the distance of the tour
+					double dist = 0;
+					Vertex* previous = previous_tours.at(k).front();
+					for(Vertex* v : previous_tours.at(k)) {
+						 dist += previous->GetDistanceTo(v);
+						 previous = v;
+					}
+
+					// Sanity print
+					if(DEBUG_K_TSP_SHFT)
+						printf("  dist = %.3f\n", dist);
+
+					// Determine the time to move this distance
+					if(dist > DIST_MAX) {
+						// This is too long to fly!
+						if(DEBUG_K_TSP_SHFT)
+							printf("   too far... t = %f\n", new_time);
+
+						// Mark this solution at infeasible
+						solution->m_bFeasible = false;
+
+						// Just return to avoid breaking things...
+						return;
+					}
+					else if(dist <= DIST_OPT) {
+						// Fly at max speed
+						new_time = dist * (1.0/V_MAX);
+						if(DEBUG_K_TSP_SHFT)
+							printf("   go V_MAX = %f, t = %f\n", V_MAX, new_time);
+					}
+					else {
+						// Determine fastest speed to move through this leg
+						double v = solution->GetMaxVelocity(dist);
+
+						new_time = dist/v;
+
+						if(DEBUG_K_TSP_SHFT)
+							printf("   go v = %f, t = %f\n", v, new_time);
+					}
+
+					// Adjust the depot/terminal based on found time
+					Vertex* term_k = solution->GetTerminalOfPartion(k);
+					double term_x, term_y;
+					solution->m_tBSTrajectory.getPosition(start_time + new_time, &term_x, &term_y);
+					term_k->fX = term_x;
+					term_k->fY = term_y;
+
+					// Record the start time
+					previous_start_times.at(k) = start_time;
+
+					// Sanity print
+					if(DEBUG_K_TSP_SHFT)
+						printf("  previous time = %.3f, new time = %.3f\n", previous_time, new_time);
+
+					// While time changed, repeat!
+					if(equalFloats(previous_time, new_time)) {
+						tour_duration.push_back(new_time);
+						run_again = false;
+						earliest_start = start_time + new_time + BATTERY_SWAP_TIME;
+
+						// Sanity print
+						if(DEBUG_K_TSP_SHFT)
+							printf("   * Consistent! Earliest start = %.3f\n", earliest_start);
+					}
+					else {
+						// Sanity print
+						if(DEBUG_K_TSP_SHFT)
+							printf("   Run again...\n");
+					}
+					// Update previous before next run
+					previous_time = new_time;
+				}
+			}
+		}
+
+
+
+
 
 		// Sanity print...
 //		solution->PrintGraph();
@@ -626,6 +793,28 @@ void K_TSP_Shft::kMeansClustering(std::vector<KMPoint>* points, std::vector<KMPo
 			}
 		}
 
+//		// For each cluster... measure the MST distance
+//		std::vector<double> cluster_dists;
+//		for(int k = 0; k < centroids->size(); k++) {
+//			std::vector<Vertex*> cluster_k;
+//			// For each point, check which cluster it belongs to
+//			for(KMPoint pnt : *points) {
+//				if(pnt.cluster == k) {
+//					// Put the points of this cluster into an array of vertices
+//					Vertex* v = new Vertex(-1, pnt.x, pnt.y, E_VertexType::e_Destination);
+//					cluster_k.push_back(v);
+//				}
+//			}
+//			// Run Prim's algorithm on this cluster
+//			double clst_dist = Graph_Theory_Algorithms::MST_Prims(cluster_k);
+//			cluster_dists.push_back(clst_dist);
+//
+//			// Memory cleanup
+//			for(Vertex* v : cluster_k) {
+//				delete v;
+//			}
+//		}
+
 		// Reset helper arrays
 		for(int j = 0; j < (int)centroids->size(); ++j) {
 			nPoints[j]=0;
@@ -658,6 +847,8 @@ void K_TSP_Shft::kMeansClustering(std::vector<KMPoint>* points, std::vector<KMPo
 //			printf(" k=%d, (%.3f,%.3f)\n", centroids->at(cnt).vID, centroids->at(cnt).x, centroids->at(cnt).y);
 		}
 	}
+
+
 
 	delete[] nPoints;
 	delete[] sumX;

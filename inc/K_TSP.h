@@ -26,7 +26,7 @@
 #include "Graph_Theory_Algorithms.h"
 
 
-#define DEBUG_K_TSP		1 || DEBUG
+#define DEBUG_K_TSP		0 || DEBUG
 
 struct KMeanPoint {
 	double x, y;

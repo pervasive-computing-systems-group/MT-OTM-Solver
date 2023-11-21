@@ -158,6 +158,7 @@ int main(int argc, char** argv) {
 
 	// 3. return best-found-P, t_tot
 	bestSolution->PrintSolution();
+	bestSolution->PrintGraph();
 	printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
 	double duration_s = (double)duration/1000.0;
 

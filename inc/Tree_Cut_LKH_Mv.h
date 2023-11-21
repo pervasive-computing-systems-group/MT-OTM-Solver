@@ -26,7 +26,7 @@
 #include "UDEdge.h"
 #include "ShortCutTree.h"
 
-#define TC_LKH_MV_DEBUG	1 || DEBUG
+#define TC_LKH_MV_DEBUG	0 || DEBUG
 #define PRINT_LKH_PATH	0
 #define SPEED_SCHEULING	1
 #define ROUND_ERROR		0.1

@@ -24,7 +24,7 @@
 #include "UDEdge.h"
 #include "ShortCutTree.h"
 
-#define TPF_DEBUG		1 || DEBUG
+#define TPF_DEBUG		0 || DEBUG
 #define SPEED_SCHEULING	1
 
 class TotalPath_Follower: public EmptyGraph_Planner, public Tree_Solver {
