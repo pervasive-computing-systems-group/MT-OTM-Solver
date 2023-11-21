@@ -26,7 +26,7 @@
 #include "Graph_Theory_Algorithms.h"
 
 
-#define DEBUG_K_TSP_SHFT	0 || DEBUG
+#define DEBUG_K_TSP_SHFT	1 || DEBUG
 
 struct KMPoint {
 	double x, y;

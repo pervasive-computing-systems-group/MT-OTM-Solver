@@ -137,20 +137,34 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 			printf(" dist = %f\n", dist);
 	}
 
-	// We need to order the clusters
+	// We need to order the clusters  TODO: Fix this!
 	std::vector<int> clust_to_part;
 	// Find cluster-to-partition mapping
 	{
-		double lower_bound = -100000000000.0;
+		// Make an array that tracks which clusters we have already assigned
+		bool* cluster_marked = new bool[solution->m_nM];
+		for(int i = 0; i < solution->m_nM; i++) {
+			cluster_marked[i] = false;
+		}
+
+		if(DEBUG_K_TSP_SHFT)
+			printf("Ordering cluster\n");
 		// For each partition
 		for(int i = 0; i < solution->m_nM; i++) {
+			if(DEBUG_K_TSP_SHFT)
+				printf(" partition %d\n", i);
 			double next_closest_dist = 100000000000.0;
 			int next_cluster = -1;
 			// For each cluster
 			for(int k = 0; k < solution->m_nM; k++) {
+				if(DEBUG_K_TSP_SHFT)
+					printf("  checking cluster %d (%.3f, %.3f)\n", k, cp_x.at(k), cp_y.at(k));
 				// ASSUMPTION! order can be determined based on x position (least-first) with y position to break ties (least first)
 				// ``sort'' by above condition
-				if((cp_x.at(k) < next_closest_dist) && (cp_x.at(k) > (lower_bound + 0.0001))) {
+				if((cp_x.at(k) < next_closest_dist) && !cluster_marked[k]) {
+					if(DEBUG_K_TSP_SHFT)
+						printf("   update to this cluster\n");
+
 					// New next-best
 					next_cluster = k;
 					next_closest_dist = cp_x.at(k);
@@ -160,7 +174,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 			// Update what we found
 			if(next_cluster != -1) {
 				clust_to_part.push_back(next_cluster);
-				lower_bound = next_closest_dist;
+				cluster_marked[next_cluster] = true;
 			}
 			else {
 				// Something went wrong... (two equal x values?)
@@ -168,6 +182,48 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 				exit(1);
 			}
 		}
+
+
+
+
+
+//		double lower_bound = -100000000000.0;
+//		// For each partition
+//		for(int i = 0; i < solution->m_nM; i++) {
+//			if(DEBUG_K_TSP_SHFT)
+//				printf(" partition %d\n", i);
+//
+//			double next_closest_dist = 100000000000.0;
+//			int next_cluster = -1;
+//			// For each cluster
+//			for(int k = 0; k < solution->m_nM; k++) {
+//				if(DEBUG_K_TSP_SHFT)
+//					printf("  checking cluster %d (%.3f, %.3f)\n", k, cp_x.at(k), cp_y.at(k));
+//				// ASSUMPTION! order can be determined based on x position (least-first) with y position to break ties (least first)
+//				// ``sort'' by above condition
+//				if((cp_x.at(k) < next_closest_dist) && (cp_x.at(k) > lower_bound)) {
+//					if(DEBUG_K_TSP_SHFT)
+//						printf("   update to this cluster\n");
+//
+//					// New next-best
+//					next_cluster = k;
+//					next_closest_dist = cp_x.at(k);
+//				}
+//			}
+//
+//			// Update what we found
+//			if(next_cluster != -1) {
+//				clust_to_part.push_back(next_cluster);
+//				lower_bound = next_closest_dist;
+//			}
+//			else {
+//				// Something went wrong... (two equal x values?)
+//				fprintf(stderr, "[ERROR] : K_TSP_Shft::RunAlgorithm() : Ordering clusters... next_cluster returned -1\n");
+//				exit(1);
+//			}
+//		}
+
+
 	}
 
 	// Sanity print
@@ -292,12 +348,12 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 	std::vector<double> tour_distance;
 
 	// While still making changes to the sub-tours...
-	while(tour_changed) {
+	while(tour_changed && outter_counter < 5) {
 		tour_changed = false;
 		outter_counter++;
 		inner_counter = 0;
 		// While still making changes to time...
-		while(changed_times && inner_counter < 50) {
+		while(changed_times && inner_counter < 5) {
 			// Assume we don't restart...
 			changed_times = false;
 			inner_counter++;
@@ -396,7 +452,6 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					// While time changed, repeat!
 					if(equalFloats(previous_time, new_time)) {
 						// Can we push this back?
-						// TODO: Verify that this is working...
 						if(dist <= DIST_OPT) {
 							// Push start time back...
 							double new_start_time = previous_start_times.at(k) - delta_t;
@@ -428,7 +483,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					else {
 						// Sanity print
 						if(DEBUG_K_TSP_SHFT)
-							printf("   Run again...\n");
+							printf("   Run update again...\n");
 					}
 					// Update previous before next run
 					previous_time = new_time;
@@ -443,13 +498,6 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 				// Initial desired start time based current depot location
 				double desired_start_time = solution->m_tBSTrajectory.getTimeAt(solution->GetDepotOfPartion(k)->fX,
 						solution->GetTerminalOfPartion(k)->fY);
-//				// Can we try to shift this sub-tour left in time?
-//				if(tour_distance.at(k) < DIST_OPT) {
-//					// Tour is short... ask for an earlier start time
-//					// TODO: come up with a better way to ask for a better time...
-//					desired_start_time = desired_start_time - 2;
-//					desired_start_time = std::max(desired_start_time - 2, 0.0);
-//				}
 				desired_times.push_back(desired_start_time);
 			}
 
@@ -607,7 +655,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					else {
 						// Sanity print
 						if(DEBUG_K_TSP_SHFT)
-							printf("   Run again...\n");
+							printf("   Run fixer again...\n");
 					}
 					// Update previous before next run
 					previous_time = new_time;
@@ -677,7 +725,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 		// Did something change?
 		for(int k = 0; k < solution->m_nM; k++) {
 			// Check the order of vertices in this sub-tour
-			for(int i = 0; i < previous_tours.size(); i++) {
+			for(int i = 0; i < previous_tours.at(k).size(); i++) {
 				if(previous_tours.at(k).at(i)->nID != new_tours.at(k).at(i)->nID) {
 					tour_changed = true;
 					break;

@@ -35,33 +35,33 @@ int main(int argc, char** argv) {
 	if(argc == 6) {
 		algApproach = atoi(argv[1]);
 		filePath = argv[2];
-		velocity_flag = (E_VelocityFlag)atoi(argv[3]);
-		printData = atoi(argv[4]);
-		outputPath = argv[5];
+		printData = atoi(argv[3]);
+		outputPath = argv[4];
+		velocity_flag = (E_VelocityFlag)atoi(argv[5]);
 	}
 	else if(argc == 5) {
 		algApproach = atoi(argv[1]);
 		filePath = argv[2];
-		velocity_flag = (E_VelocityFlag)atoi(argv[3]);
-		printData = atoi(argv[4]);
-		outputPath = DEFAULT_DATA_LOG_LOCATION;
+		printData = atoi(argv[3]);
+		outputPath = argv[4];
+		velocity_flag = DEFAULT_V_FLAG;
 	}
 	else if(argc == 4) {
 		algApproach = atoi(argv[1]);
 		filePath = argv[2];
-		velocity_flag = (E_VelocityFlag)atoi(argv[3]);
-		printData = DEFAULT_DATA_LOG;
+		printData = atoi(argv[3]);
 		outputPath = DEFAULT_DATA_LOG_LOCATION;
+		velocity_flag = DEFAULT_V_FLAG;
 	}
 	else if(argc == 3) {
 		algApproach = atoi(argv[1]);
 		filePath = argv[2];
-		velocity_flag = DEFAULT_V_FLAG;
 		printData = DEFAULT_DATA_LOG;
 		outputPath = DEFAULT_DATA_LOG_LOCATION;
+		velocity_flag = DEFAULT_V_FLAG;
 	}
 	else {
-		printf("Expected 2 ~ 5 arguments:\n (1) Algorithm approach\n (3) File path to plot data\n (4) [OPTIONAL] Velocity flag\n (5) [OPTIONAL] \"0\" for no data logging, \"1\" for data logging\n (6) [OPTIONAL] File path for output\n\n");
+		printf("Expected 2 ~ 5 arguments:\n (1) Algorithm approach\n (3) File path to plot data\n (4) [OPTIONAL] \"0\" for no data logging, \"1\" for data logging\n (5) [OPTIONAL] File path for output\n [OPTIONAL] (6) Velocity flag\n\n\n");
 
 		exit(0);
 	}

@@ -1727,7 +1727,8 @@ double Solution::GetMaxVelocity(double dist, E_VelocityFlag velocityFlag) {
 			 */
 
 			// Approximate inverse function of d(v)
-			return sqrt(36791437195.0 - 10557000.0 * dist) / 10557.0 + 129221.0/10557.0;
+			double v = sqrt(36791437195.0 - 10557000.0 * dist) / 10557.0 + 129221.0/10557.0;
+			return std::min(v, V_MAX);
 		}
 	}
 	else {
