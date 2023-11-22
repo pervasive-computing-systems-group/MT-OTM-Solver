@@ -1081,6 +1081,7 @@ void Solution::PrintLKHDataFHPP(int a, int b) {
 	fprintf(pParFile, "PROBLEM_FILE = FixedHPP.tsp\n");
 	fprintf(pParFile, "COMMENT Fixed Hamiltonian Path Problem\n");
 	fprintf(pParFile, "TOUR_FILE = LKH_output.dat\n");
+	fprintf(pParFile, "TRACE_LEVEL = 0\n");
 
 	if(DEBUG_SOLUTION)
 		printf("  Done!\n");

@@ -21,6 +21,9 @@ K_TSP_Shft::~K_TSP_Shft() {
  * Runs the K-means -> TSP -> Adjusting algorithm
  */
 void K_TSP_Shft::RunAlgorithm(Solution* solution) {
+	if(SANITY_PRINT)
+		printf("\nRunning K_TSP_Shft with n = %d, m = %d\n\n", solution->m_nN, solution->m_nM);
+
 	/// Run k-means clustering to group together waypoints
 	// Add waypoints to a vector
 	std::vector<KMPoint> points;
@@ -137,7 +140,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 			printf(" dist = %f\n", dist);
 	}
 
-	// We need to order the clusters  TODO: Fix this!
+	// We need to order the clusters
 	std::vector<int> clust_to_part;
 	// Find cluster-to-partition mapping
 	{
@@ -183,47 +186,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 			}
 		}
 
-
-
-
-
-//		double lower_bound = -100000000000.0;
-//		// For each partition
-//		for(int i = 0; i < solution->m_nM; i++) {
-//			if(DEBUG_K_TSP_SHFT)
-//				printf(" partition %d\n", i);
-//
-//			double next_closest_dist = 100000000000.0;
-//			int next_cluster = -1;
-//			// For each cluster
-//			for(int k = 0; k < solution->m_nM; k++) {
-//				if(DEBUG_K_TSP_SHFT)
-//					printf("  checking cluster %d (%.3f, %.3f)\n", k, cp_x.at(k), cp_y.at(k));
-//				// ASSUMPTION! order can be determined based on x position (least-first) with y position to break ties (least first)
-//				// ``sort'' by above condition
-//				if((cp_x.at(k) < next_closest_dist) && (cp_x.at(k) > lower_bound)) {
-//					if(DEBUG_K_TSP_SHFT)
-//						printf("   update to this cluster\n");
-//
-//					// New next-best
-//					next_cluster = k;
-//					next_closest_dist = cp_x.at(k);
-//				}
-//			}
-//
-//			// Update what we found
-//			if(next_cluster != -1) {
-//				clust_to_part.push_back(next_cluster);
-//				lower_bound = next_closest_dist;
-//			}
-//			else {
-//				// Something went wrong... (two equal x values?)
-//				fprintf(stderr, "[ERROR] : K_TSP_Shft::RunAlgorithm() : Ordering clusters... next_cluster returned -1\n");
-//				exit(1);
-//			}
-//		}
-
-
+		delete[] cluster_marked;
 	}
 
 	// Sanity print

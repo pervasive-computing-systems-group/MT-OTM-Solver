@@ -66,7 +66,8 @@ int main(int argc, char** argv) {
 		exit(0);
 	}
 
-	printf("\n\n** Running Min-Time OTM algorithm with approach %d **\n\n", algApproach);
+	if(SANITY_PRINT)
+		printf("\n\n** Running Min-Time OTM algorithm with approach %d **\n\n", algApproach);
 
 	Solver* solver;
 
@@ -113,7 +114,8 @@ int main(int argc, char** argv) {
 		// Make a solution with m subtours
 		Solution_Multi* retSolution =  new Solution_Multi(filePath, m, 1, 0.0);
 
-		printf("\nRunning Multi-OTM solver with m = %d\n", m);
+		if(SANITY_PRINT)
+			printf("\nRunning Multi-OTM solver with m = %d\n", m);
 		// Solve path-planning
 		solver->SolvePathPlanning(retSolution);
 
@@ -121,7 +123,8 @@ int main(int argc, char** argv) {
 		double t_tot = retSolution->TimeToRunMultiSolution();
 
 		// Sanity print
-		printf("With m = %d, Total time = %f\n\n", m, t_tot);
+		if(SANITY_PRINT)
+			printf("With m = %d, Total time = %f\n\n", m, t_tot);
 
 		// Run again?
 		if(m == retSolution->m_nN) {
@@ -143,7 +146,8 @@ int main(int argc, char** argv) {
 		}
 		else if(t_best < INF-1) {
 			// We are no longer improving by increasing m
-			printf("M is too large! (m = %d, best-time = %f)\n Have better solution, stopping algorithm...\n", m, t_best);
+			if(SANITY_PRINT)
+				printf("M is too large! (m = %d, best-time = %f)\n Have better solution, stopping algorithm...\n", m, t_best);
 			delete retSolution;
 			run = false;
 		}
@@ -158,8 +162,12 @@ int main(int argc, char** argv) {
 
 	// 3. return best-found-P, t_tot
 	bestSolution->PrintSolution();
-	bestSolution->PrintGraph();
-	printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
+
+	if(SANITY_PRINT) {
+		bestSolution->PrintGraph();
+		printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
+	}
+
 	double duration_s = (double)duration/1000.0;
 
 	if(printData) {

@@ -21,6 +21,10 @@ K_TSP::~K_TSP() {
  * Runs the K-means -> TSP -> Adjusting algorithm
  */
 void K_TSP::RunAlgorithm(Solution* solution) {
+
+	if(SANITY_PRINT)
+		printf("Running K_TSP with n = %d, m = %d\n", solution->m_nN, solution->m_nM);
+
 	/// Run k-means clustering to group together waypoints
 	// Add waypoints to a vector
 	std::vector<KMeanPoint> points;
@@ -42,22 +46,26 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 	}
 
 	// Sanity print
-	printf("Initial Centroids:\n");
-	for(KMeanPoint cnt : centroids) {
-		printf(" k=%d, (%.3f,%.3f)\n", cnt.vID, cnt.x, cnt.y);
+	if(DEBUG_K_TSP) {
+		printf("Initial Centroids:\n");
+		for(KMeanPoint cnt : centroids) {
+			printf(" k=%d, (%.3f,%.3f)\n", cnt.vID, cnt.x, cnt.y);
+		}
 	}
 
 	// Run k-means clustering with some fixed number of iterations
 	kMeansClustering(&points, &centroids, 1000*solution->m_nN);
 
 	// Sanity print
-	printf("Cluster assignments:\n");
-	for(KMeanPoint pnt : points) {
-		printf(" %d:%d\n", pnt.vID, pnt.cluster);
-	}
-	printf("Centroids:\n");
-	for(KMeanPoint cnt : centroids) {
-		printf(" k=%d, (%.3f,%.3f)\n", cnt.vID, cnt.x, cnt.y);
+	if(DEBUG_K_TSP) {
+		printf("Cluster assignments:\n");
+		for(KMeanPoint pnt : points) {
+			printf(" %d:%d\n", pnt.vID, pnt.cluster);
+		}
+		printf("Centroids:\n");
+		for(KMeanPoint cnt : centroids) {
+			printf(" k=%d, (%.3f,%.3f)\n", cnt.vID, cnt.x, cnt.y);
+		}
 	}
 
 	/// Set start/stop locations for each subtour by finding min-spanning tree on each subtour
@@ -77,11 +85,13 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 		}
 
 		// Sanity print
-		printf("Cluster %d:\n {", k);
-		for(Vertex* v : cluster) {
-			printf(" %d", v->nID);
+		if(DEBUG_K_TSP) {
+			printf("Cluster %d:\n {", k);
+			for(Vertex* v : cluster) {
+				printf(" %d", v->nID);
+			}
+			printf("}\n");
 		}
-		printf("}\n");
 
 		// Find point along UGV path closest to centroid
 		double cent_x, cent_y;
@@ -93,23 +103,38 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 
 		double dist = Graph_Theory_Algorithms::MST_Prims(cluster);
 		cluster_dist.push_back(dist);
-		printf(" dist = %f\n", dist);
+		if(DEBUG_K_TSP)
+			printf(" dist = %f\n", dist);
 	}
 
 	// We need to order the clusters
 	std::vector<int> clust_to_part;
 	// Find cluster-to-partition mapping
 	{
-		double lower_bound = -100000000000.0;
+		// Make an array that tracks which clusters we have already assigned
+		bool* cluster_marked = new bool[solution->m_nM];
+		for(int i = 0; i < solution->m_nM; i++) {
+			cluster_marked[i] = false;
+		}
+
+		if(DEBUG_K_TSP)
+			printf("Ordering cluster\n");
 		// For each partition
 		for(int i = 0; i < solution->m_nM; i++) {
+			if(DEBUG_K_TSP)
+				printf(" partition %d\n", i);
 			double next_closest_dist = 100000000000.0;
 			int next_cluster = -1;
 			// For each cluster
 			for(int k = 0; k < solution->m_nM; k++) {
+				if(DEBUG_K_TSP)
+					printf("  checking cluster %d (%.3f, %.3f)\n", k, cp_x.at(k), cp_y.at(k));
 				// ASSUMPTION! order can be determined based on x position (least-first) with y position to break ties (least first)
 				// ``sort'' by above condition
-				if((cp_x.at(k) < next_closest_dist) && (cp_x.at(k) > (lower_bound + 0.0001))) {
+				if((cp_x.at(k) < next_closest_dist) && !cluster_marked[k]) {
+					if(DEBUG_K_TSP)
+						printf("   update to this cluster\n");
+
 					// New next-best
 					next_cluster = k;
 					next_closest_dist = cp_x.at(k);
@@ -119,22 +144,26 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			// Update what we found
 			if(next_cluster != -1) {
 				clust_to_part.push_back(next_cluster);
-				lower_bound = next_closest_dist;
+				cluster_marked[next_cluster] = true;
 			}
 			else {
 				// Something went wrong... (two equal x values?)
-				fprintf(stderr, "[ERROR] : K_TSP_Shft::RunAlgorithm() : Ordering clusters... next_cluster returned -1\n");
+				fprintf(stderr, "[ERROR] : K_TSP::RunAlgorithm() : Ordering clusters... next_cluster returned -1\n");
 				exit(1);
 			}
 		}
+
+		delete[] cluster_marked;
 	}
 
 	// Sanity print
-	printf("Cluster-to-Partition:\n");
-	for(int i = 0; i < clust_to_part.size(); i++) {
-		printf(" %d:%d\n", i, clust_to_part.at(i));
+	if(DEBUG_K_TSP) {
+		printf("Cluster-to-Partition:\n");
+		for(int i = 0; i < clust_to_part.size(); i++) {
+			printf(" %d:%d\n", i, clust_to_part.at(i));
+		}
+		printf("Estimated time-per-cluster:\n");
 	}
-	printf("Estimated time-per-cluster:\n");
 
 	// Track the start times between iterations
 	std::vector<double> previous_start_times;
@@ -161,15 +190,17 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 		term_k->fX = term_x;
 		term_k->fY = term_y;
 
-		printf(" %d: %.3f - start @ %.3f\n", k, min_time, start_time);
+		if(DEBUG_K_TSP)
+			printf(" %d: %.3f - start @ %.3f\n", k, min_time, start_time);
 
 		// Record predicted start time
 		previous_start_times.push_back(start_time);
 	}
 
 	// Sanity print...
-	solution->PrintGraph();
-	printf("\n** Solve TSP **\n");
+//	solution->PrintGraph();
+	if(DEBUG_K_TSP)
+		printf("\n** Solve TSP **\n");
 
 	/// Run TSP on resulting fixed-HPP
 	std::vector<std::vector<Vertex*>> previous_tours;
@@ -188,11 +219,13 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 		cluster.push_back(solution->GetTerminalOfPartion(k));
 
 		// Sanity print
-		printf("Sub-tour %d:\n", k);
-		for(Vertex* v : cluster) {
-			printf(" %d", v->nID);
+		if(DEBUG_K_TSP) {
+			printf("Sub-tour %d:\n", k);
+			for(Vertex* v : cluster) {
+				printf(" %d", v->nID);
+			}
+			printf("\n");
 		}
-		printf("\n");
 
 		std::vector<Vertex*> sub_tour;
 
@@ -203,13 +236,15 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 	}
 
 	// Sanity print
-	printf("Tours:\n");
-	for(std::vector<Vertex*> sub_tour : previous_tours) {
-		printf(" {");
-		for(Vertex* v : sub_tour) {
-			printf(" %d", v->nID);
+	if(DEBUG_K_TSP) {
+		printf("Tours:\n");
+		for(std::vector<Vertex*> sub_tour : previous_tours) {
+			printf(" {");
+			for(Vertex* v : sub_tour) {
+				printf(" %d", v->nID);
+			}
+			printf("}\n");
 		}
-		printf("}\n");
 	}
 
 	// Determine which partition-to-cluster mapping
@@ -225,9 +260,11 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 	}
 
 	// Sanity print
-	printf("Partition-to-cluster mapping:\n");
-	for(int k = 0; k < part_to_cluster.size(); k++) {
-		printf(" %d:%d\n", k, part_to_cluster.at(k));
+	if(DEBUG_K_TSP) {
+		printf("Partition-to-cluster mapping:\n");
+		for(int k = 0; k < part_to_cluster.size(); k++) {
+			printf(" %d:%d\n", k, part_to_cluster.at(k));
+		}
 	}
 
 	/// Adjust start/stop locations until solution is consistent (iteratively)
@@ -251,11 +288,13 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			tour_duration.clear();
 
 			// Sanity print
-			printf("Correcting start/end times to be consistent with time\n");
+			if(DEBUG_K_TSP)
+				printf("Correcting start/end times to be consistent with time\n");
 
 			// For each sub-tour
 			for(int k = 0; k < solution->m_nM; k++) {
-				printf(" Tour %d\n", k);
+				if(DEBUG_K_TSP)
+					printf(" Tour %d\n", k);
 				double previous_time = 0;
 				double new_time = 0;
 				bool run_again = true;
@@ -270,7 +309,8 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 					}
 
 					// Sanity print
-					printf("  dist = %.3f\n", dist);
+					if(DEBUG_K_TSP)
+						printf("  dist = %.3f\n", dist);
 
 					// Determine the time to move this distance
 					if(dist > DIST_MAX) {
@@ -280,6 +320,7 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 							printf("   too far... t = %f\n", new_time);
 
 						// Just return to avoid breaking things...
+						solution->m_bFeasible = false;
 						return;
 					}
 					else if(dist <= DIST_OPT) {
@@ -320,20 +361,23 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 					previous_start_times.at(k) = old_mid_time - new_time/2;
 
 					// Sanity print
-					printf("  previous time = %.3f, new time = %.3f\n", previous_time, new_time);
+					if(DEBUG_K_TSP)
+						printf("  previous time = %.3f, new time = %.3f\n", previous_time, new_time);
 
 					// While time changed, repeat!
 					if(equalFloats(previous_time, new_time)) {
 
 						// Sanity print
-						printf("   * Consistent!\n");
+						if(DEBUG_K_TSP)
+							printf("   * Consistent!\n");
 						tour_duration.push_back(new_time);
 
 						run_again = false;
 					}
 					else {
 						// Sanity print
-						printf("   Run again...\n");
+						if(DEBUG_K_TSP)
+							printf("   Run again...\n");
 					}
 					// Update previous before next run
 					previous_time = new_time;
@@ -355,7 +399,8 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			solveStartTimesQP(&tour_duration, &desired_times, &selected_times);
 
 			// Sanity print
-			printf("Adjusting correcting start/step based on QP\n");
+			if(DEBUG_K_TSP)
+				printf("Adjusting correcting start/step based on QP\n");
 
 			// Update depot/terminals
 			for(int k = 0; k < solution->m_nM; k++) {
@@ -381,29 +426,33 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			}
 
 			// Sanity print...
-			solution->PrintGraph();
+//			solution->PrintGraph();
 			// Sanity print
-			printf("Comparing start times\n");
+			if(DEBUG_K_TSP)
+				printf("Comparing start times\n");
 
 			// Determine if we updated our start times...
 			for(int k = 0; k < solution->m_nM; k++) {
 				if(!equalFloats(selected_times.at(k), previous_start_times.at(k))) {
 					// Sanity print
-					printf(" %d: previous=%.3f, new=%.3f\n", k, selected_times.at(k), previous_start_times.at(k));
+					if(DEBUG_K_TSP)
+						printf(" %d: previous=%.3f, new=%.3f\n", k, selected_times.at(k), previous_start_times.at(k));
 					changed_times = true;
 				}
 				previous_start_times.at(k) = selected_times.at(k);
 			}
 
 			// Sanity print
-			printf("\n** Iteration %d, Changed times? %d**\n\n", inner_counter, changed_times);
+			if(DEBUG_K_TSP)
+				printf("\n** Iteration %d, Changed times? %d**\n\n", inner_counter, changed_times);
 		}
 
 		// Run TSP again
 
 		// Sanity print...
-		solution->PrintGraph();
-		printf("\n** Solve TSP **\n");
+//		solution->PrintGraph();
+		if(DEBUG_K_TSP)
+			printf("\n** Solve TSP **\n");
 
 		/// Run TSP on resulting fixed-HPP
 		std::vector<std::vector<Vertex*>> new_tours;
@@ -419,11 +468,13 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			cluster.push_back(previous_tours.at(k).back());
 
 			// Sanity print
-			printf("Sub-tour %d:\n", k);
-			for(Vertex* v : cluster) {
-				printf(" %d", v->nID);
+			if(DEBUG_K_TSP) {
+				printf("Sub-tour %d:\n", k);
+				for(Vertex* v : cluster) {
+					printf(" %d", v->nID);
+				}
+				printf("\n");
 			}
-			printf("\n");
 
 			std::vector<Vertex*> sub_tour;
 
@@ -434,21 +485,23 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 		}
 
 		// Sanity print
-		printf("Previous tours\n");
-		for(std::vector<Vertex*> sub_tour : previous_tours) {
-			printf(" {");
-			for(Vertex* v : sub_tour) {
-				printf(" %d", v->nID);
+		if(DEBUG_K_TSP) {
+			printf("Previous tours\n");
+			for(std::vector<Vertex*> sub_tour : previous_tours) {
+				printf(" {");
+				for(Vertex* v : sub_tour) {
+					printf(" %d", v->nID);
+				}
+				printf("}\n");
 			}
-			printf("}\n");
-		}
-		printf("New tours\n");
-		for(std::vector<Vertex*> sub_tour : new_tours) {
-			printf(" {");
-			for(Vertex* v : sub_tour) {
-				printf(" %d", v->nID);
+			printf("New tours\n");
+			for(std::vector<Vertex*> sub_tour : new_tours) {
+				printf(" {");
+				for(Vertex* v : sub_tour) {
+					printf(" %d", v->nID);
+				}
+				printf("}\n");
 			}
-			printf("}\n");
 		}
 
 		// Did something change?
@@ -475,17 +528,19 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 		}
 
 		// Sanity print
-		printf("Updated Previous tours\n");
-		for(std::vector<Vertex*> sub_tour : previous_tours) {
-			printf(" {");
-			for(Vertex* v : sub_tour) {
-				printf(" %d", v->nID);
+		if(DEBUG_K_TSP) {
+			printf("Updated Previous tours\n");
+			for(std::vector<Vertex*> sub_tour : previous_tours) {
+				printf(" {");
+				for(Vertex* v : sub_tour) {
+					printf(" %d", v->nID);
+				}
+				printf("}\n");
 			}
-			printf("}\n");
-		}
 
-		// Sanity print
-		printf("\n** Outter-Iteration %d, Changed sub-tours? %d**\n\n", outter_counter, tour_changed);
+			// Sanity print
+			printf("\n** Outter-Iteration %d, Changed sub-tours? %d**\n\n", outter_counter, tour_changed);
+		}
 	}
 
 	/// Store final solution
@@ -533,7 +588,8 @@ void K_TSP::kMeansClustering(std::vector<KMeanPoint>* points, std::vector<KMeanP
 	int iteration = 0;
 
 	// Sanity print
-	printf("Starting k-means clustering\n");
+	if(DEBUG_K_TSP)
+		printf("Starting k-means clustering\n");
 
 	// Run clustering iterations
 	while(run_again && iteration < epochs) {
@@ -541,7 +597,8 @@ void K_TSP::kMeansClustering(std::vector<KMeanPoint>* points, std::vector<KMeanP
 		iteration++;
 
 		// Sanity print
-		printf("Iteration: %d\n", iteration);
+		if(DEBUG_K_TSP)
+			printf("Iteration: %d\n", iteration);
 
 		// Check every edge against every centroid
 		for(int p = 0; p < points->size(); p++) {
@@ -559,7 +616,8 @@ void K_TSP::kMeansClustering(std::vector<KMeanPoint>* points, std::vector<KMeanP
 			}
 
 			// Sanity print
-			printf(" node %d - k=%d w/ dist=%.3f\n", p, closest_k, min_dist);
+			if(DEBUG_K_TSP)
+				printf(" node %d - k=%d w/ dist=%.3f\n", p, closest_k, min_dist);
 
 			// Did we make an update?
 			if(closest_k != points->at(p).cluster) {
@@ -593,11 +651,13 @@ void K_TSP::kMeansClustering(std::vector<KMeanPoint>* points, std::vector<KMeanP
 			}
 		}
 		// Compute the new centroids
-		printf(" Updating clusters\n");
+		if(DEBUG_K_TSP)
+			printf(" Updating clusters\n");
 		for(int cnt = 0; cnt < centroids->size(); cnt++) {
 			centroids->at(cnt).x = sumX[cnt] / nPoints[cnt];
 			centroids->at(cnt).y = sumY[cnt] / nPoints[cnt];
-			printf(" k=%d, (%.3f,%.3f)\n", centroids->at(cnt).vID, centroids->at(cnt).x, centroids->at(cnt).y);
+			if(DEBUG_K_TSP)
+				printf(" k=%d, (%.3f,%.3f)\n", centroids->at(cnt).vID, centroids->at(cnt).x, centroids->at(cnt).y);
 		}
 	}
 
@@ -713,11 +773,13 @@ void K_TSP::runLKH_TSP(Solution* solution, std::vector<Vertex*>* cluster, std::v
 	}
 
 	// Sanity print
-	printf("Fixed total path:\n");
-	for(int n : totalPath) {
-		printf(" %d", n);
+	if(DEBUG_K_TSP) {
+		printf("Fixed total path:\n");
+		for(int n : totalPath) {
+			printf(" %d", n);
+		}
+		printf("\n\n");
 	}
-	printf("\n\n");
 
 	// Create an ordered vector based on found path
 	for(int n : totalPath) {
@@ -734,7 +796,8 @@ void K_TSP::solveStartTimesQP(std::vector<double>* tour_times, std::vector<doubl
 	int M = tour_times->size();
 
 	// Sanity print
-	printf("Solving QP to find optimal start/end points\n");
+	if(DEBUG_K_TSP)
+		printf("Solving QP to find optimal start/end points\n");
 
 	// Verify tour_times and desired_times are same size
 	if(desired_times->size() != M) {
@@ -775,7 +838,8 @@ void K_TSP::solveStartTimesQP(std::vector<double>* tour_times, std::vector<doubl
 		selected_times->clear();
 
 		// Sanity print
-		printf(" QP Result:\n");
+		if(DEBUG_K_TSP)
+			printf(" QP Result:\n");
 
 		// Get result
 		for(int k = 0; k < M; k++) {
@@ -783,7 +847,8 @@ void K_TSP::solveStartTimesQP(std::vector<double>* tour_times, std::vector<doubl
 			selected_times->push_back(start_time);
 
 			// Sanity print
-			printf("  %d: wanted %.3f, got %.3f\n", k, desired_times->at(k), start_time);
+			if(DEBUG_K_TSP)
+				printf("  %d: wanted %.3f, got %.3f\n", k, desired_times->at(k), start_time);
 		}
 	}
 	catch(GRBException e) {

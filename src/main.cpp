@@ -341,10 +341,6 @@ int main(int argc, char** argv) {
 		if(m == solution->m_nN) {
 			run = false;
 		}
-//
-//		if(m == 7) {
-//			bestSolution = solution;
-//		}
 
 		// Did we find a better solution?
 		if(t_tot < t_best) {
