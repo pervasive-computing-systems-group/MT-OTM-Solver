@@ -389,9 +389,9 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			std::vector<double> selected_times;
 
 			for(int k = 0; k < solution->m_nM; k++) {
-				// Desired start time based on cluster and tour duration
-				double cent_time = solution->m_tBSTrajectory.getTimeAt(cp_x.at(part_to_cluster.at(k)), cp_y.at(part_to_cluster.at(k)));
-				double desired_start_time = cent_time - (tour_duration.at(k)/2.0);
+				// Initial desired start time based current depot location
+				double desired_start_time = solution->m_tBSTrajectory.getTimeAt(solution->GetDepotOfPartion(k)->fX,
+						solution->GetTerminalOfPartion(k)->fY);
 				desired_times.push_back(desired_start_time);
 			}
 
@@ -507,7 +507,7 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 		// Did something change?
 		for(int k = 0; k < solution->m_nM; k++) {
 			// Check the order of vertices in this sub-tour
-			for(int i = 0; i < previous_tours.size(); i++) {
+			for(int i = 0; i < previous_tours.at(k).size(); i++) {
 				if(previous_tours.at(k).at(i)->nID != new_tours.at(k).at(i)->nID) {
 					tour_changed = true;
 					break;

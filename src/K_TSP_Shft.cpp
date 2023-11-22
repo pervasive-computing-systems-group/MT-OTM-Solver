@@ -802,28 +802,6 @@ void K_TSP_Shft::kMeansClustering(std::vector<KMPoint>* points, std::vector<KMPo
 			}
 		}
 
-//		// For each cluster... measure the MST distance
-//		std::vector<double> cluster_dists;
-//		for(int k = 0; k < centroids->size(); k++) {
-//			std::vector<Vertex*> cluster_k;
-//			// For each point, check which cluster it belongs to
-//			for(KMPoint pnt : *points) {
-//				if(pnt.cluster == k) {
-//					// Put the points of this cluster into an array of vertices
-//					Vertex* v = new Vertex(-1, pnt.x, pnt.y, E_VertexType::e_Destination);
-//					cluster_k.push_back(v);
-//				}
-//			}
-//			// Run Prim's algorithm on this cluster
-//			double clst_dist = Graph_Theory_Algorithms::MST_Prims(cluster_k);
-//			cluster_dists.push_back(clst_dist);
-//
-//			// Memory cleanup
-//			for(Vertex* v : cluster_k) {
-//				delete v;
-//			}
-//		}
-
 		// Reset helper arrays
 		for(int j = 0; j < (int)centroids->size(); ++j) {
 			nPoints[j]=0;
