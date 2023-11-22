@@ -366,6 +366,9 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 			if(DEBUG_K_TSP_SHFT)
 				printf("Correcting start/end times to be consistent with time\n");
 
+			double const delta_t = 10;
+			double earliest_start = 0;
+
 			// For each sub-tour
 			for(int k = 0; k < solution->m_nM; k++) {
 				// Initial desired start time based current depot location
@@ -376,10 +379,6 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 				double previous_time = 0;
 				double new_time = 0;
 				bool run_again = true;
-
-				bool moving_start = false;
-				double delta_t = 10;
-				double prev_dist = 0;
 
 				// While we keep making updates...
 				while(run_again) {
@@ -452,10 +451,8 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					// While time changed, repeat!
 					if(equalFloats(previous_time, new_time)) {
 						// Can we push this back?
-						if(dist <= DIST_OPT) {
-							// Push start time back...
-							double new_start_time = previous_start_times.at(k) - delta_t;
-
+						double new_start_time = previous_start_times.at(k) - delta_t;
+						if(dist <= DIST_OPT && new_start_time > earliest_start) { // Push start time back...
 							// Place the start/end locations of the subtour at mid-time +- 1/2 new-time
 							double depot_x, depot_y;
 							solution->m_tBSTrajectory.getPosition(new_start_time, &depot_x, &depot_y);
@@ -476,6 +473,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 								printf("   * Consistent!\n");
 							tour_duration.push_back(new_time);
 							tour_distance.push_back(dist);
+							earliest_start = new_start_time + new_time + BATTERY_SWAP_TIME;
 
 							run_again = false;
 						}
