@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
 		FILE * pOutputFile;
 		char buff[100];
 		sprintf(buff, "%s", outputPath);
-		sprintf(buff + strlen(buff), "/alg_mlt_%d.dat", algApproach);
+		sprintf(buff + strlen(buff), "/alg_mv_%d.dat", algApproach);
 		printf("%s\n", buff);
 		pOutputFile = fopen(buff, "a");
 		fprintf(pOutputFile, "%d %f", bestSolution->m_nN, t_best);
