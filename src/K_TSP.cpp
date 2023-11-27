@@ -275,11 +275,12 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 	std::vector<double> tour_duration;
 
 	// While still making changes to the sub-tours...
-	while(tour_changed) {
+	while(tour_changed && outter_counter < 5) {
 		tour_changed = false;
 		outter_counter++;
+		inner_counter = 0;
 		// While still making changes to time...
-		while(changed_times) {
+		while(changed_times && inner_counter < 5) {
 			// Assume we don't restart...
 			changed_times = false;
 			inner_counter++;
@@ -446,6 +447,119 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			if(DEBUG_K_TSP)
 				printf("\n** Iteration %d, Changed times? %d**\n\n", inner_counter, changed_times);
 		}
+
+
+		/// Verify that we ended with something that is consistent
+		if(changed_times) {
+			if(DEBUG_K_TSP)
+				printf("Loop timed-out, fixing sub tours\n");
+
+			// Make sure each tour is at least consistent
+			double earliest_start = 0;
+			tour_duration.clear();
+
+			for(int k = 0; k < solution->m_nM; k++) {
+				if(DEBUG_K_TSP)
+					printf(" Tour %d\n", k);
+
+				// Verify that we aren't starting too early
+				Vertex* depot = previous_tours.at(k).front();
+				double start_time = solution->m_tBSTrajectory.getTimeAt(depot->fX, depot->fY);
+				if(start_time < earliest_start) {
+					// Fix this start time
+					if(DEBUG_K_TSP)
+						printf("  Fixing start time: %.3f to %.3f\n", start_time, earliest_start);
+					double x,y;
+					solution->m_tBSTrajectory.getPosition(earliest_start, &x, &y);
+					depot->fX = x;
+					depot->fY = y;
+					start_time = earliest_start;
+				}
+
+				// Current terminal position
+				double previous_time = 0;
+				double new_time = 0;
+				bool run_again = true;
+				// While we keep making updates...
+				while(run_again) {
+					// Determine the distance of the tour
+					double dist = 0;
+					Vertex* previous = previous_tours.at(k).front();
+					for(Vertex* v : previous_tours.at(k)) {
+						 dist += previous->GetDistanceTo(v);
+						 previous = v;
+					}
+
+					// Sanity print
+					if(DEBUG_K_TSP)
+						printf("  dist = %.3f\n", dist);
+
+					// Determine the time to move this distance
+					if(dist > DIST_MAX) {
+						// This is too long to fly!
+						if(DEBUG_K_TSP)
+							printf("   too far... t = %f\n", new_time);
+
+						// Mark this solution at infeasible
+						solution->m_bFeasible = false;
+
+						// Just return to avoid breaking things...
+						return;
+					}
+					else if(dist <= DIST_OPT) {
+						// Fly at max speed
+						new_time = dist * (1.0/V_MAX);
+						if(DEBUG_K_TSP)
+							printf("   go V_MAX = %f, t = %f\n", V_MAX, new_time);
+					}
+					else {
+						// Determine fastest speed to move through this leg
+						double v = solution->GetMaxVelocity(dist);
+
+						new_time = dist/v;
+
+						if(DEBUG_K_TSP)
+							printf("   go v = %f, t = %f\n", v, new_time);
+					}
+
+					// Adjust the depot/terminal based on found time
+					Vertex* term_k = solution->GetTerminalOfPartion(k);
+					double term_x, term_y;
+					solution->m_tBSTrajectory.getPosition(start_time + new_time, &term_x, &term_y);
+					term_k->fX = term_x;
+					term_k->fY = term_y;
+
+					// Record the start time
+					previous_start_times.at(k) = start_time;
+
+					// Sanity print
+					if(DEBUG_K_TSP)
+						printf("  previous time = %.3f, new time = %.3f\n", previous_time, new_time);
+
+					// While time changed, repeat!
+					if(equalFloats(previous_time, new_time)) {
+						tour_duration.push_back(new_time);
+						run_again = false;
+						earliest_start = start_time + new_time + BATTERY_SWAP_TIME;
+
+						// Sanity print
+						if(DEBUG_K_TSP)
+							printf("   * Consistent! Earliest start = %.3f\n", earliest_start);
+					}
+					else {
+						// Sanity print
+						if(DEBUG_K_TSP)
+							printf("   Run fixer again...\n");
+					}
+					// Update previous before next run
+					previous_time = new_time;
+				}
+			}
+		}
+
+
+
+
 
 		// Run TSP again
 
