@@ -3,7 +3,6 @@ import math
 import os
 import random
 
-FILE_PATH = "Test_Set_V/"
 NUM_PLOTS = 50
 
 # Fixed Plot Values
@@ -30,14 +29,16 @@ FIXED_PLOT_MIN_POINTS = 60
 # STEP_SIZE = 80
 
 # Test-set 4 (Test_Set_III)
-# VELOCITY_FIXED = 2.5
-# UPPER_X_LIMIT = 1280
-# LOWER_X_LIMIT = 1200
-# UPPER_Y_LIMIT = 200
-# LOWER_Y_LIMIT = -200
-# STEP_SIZE = 80
+FILE_PATH = "Test_Set_III/"
+VELOCITY_FIXED = 2.5
+UPPER_X_LIMIT = 1280
+LOWER_X_LIMIT = 1200
+UPPER_Y_LIMIT = 200
+LOWER_Y_LIMIT = -200
+STEP_SIZE = 80
 
-# Test-set 5 (Test_Set_IV)
+# # Test-set 5 (Test_Set_IV)
+# FILE_PATH = "Test_Set_IV/"
 # VELOCITY_FIXED = 2.5
 # UPPER_X_LIMIT = 0
 # LOWER_X_LIMIT = -80
@@ -45,13 +46,14 @@ FIXED_PLOT_MIN_POINTS = 60
 # LOWER_Y_LIMIT = -200
 # STEP_SIZE = 16
 
-# Test-set 5 (Test_Set_V)
-VELOCITY_FIXED = 2.5
-UPPER_X_LIMIT = 1280
-LOWER_X_LIMIT = 1200
-UPPER_Y_LIMIT = 200
-LOWER_Y_LIMIT = -200
-STEP_SIZE = 16
+# # Test-set 5 (Test_Set_V)
+# FILE_PATH = "Test_Set_V/"
+# VELOCITY_FIXED = 2.5
+# UPPER_X_LIMIT = 1280
+# LOWER_X_LIMIT = 1200
+# UPPER_Y_LIMIT = 200
+# LOWER_Y_LIMIT = -200
+# STEP_SIZE = 16
 
 
 def rand_plot(num_points, file):
@@ -77,6 +79,7 @@ def main(num_plots, num_points):
         with open(file_name, 'w') as file:
             file.write(f"{num_points}\n")
             rand_plot(num_points, file)
+            file.write("0\n")
             file.write("0.0 0.0\n")
             file.write(f"{VELOCITY_FIXED} 0.0")
 
