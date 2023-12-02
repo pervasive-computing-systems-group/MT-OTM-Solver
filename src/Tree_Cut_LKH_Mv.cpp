@@ -301,7 +301,7 @@ void Tree_Cut_LKH_Mv::RunAlgorithm(Solution* solution) {
 					double first_stop_time = solution->m_tBSTrajectory.getTimeAt(x_fs, y_fs);
 
 					// Either start at time 0 or start at the closest point to the begging of the subtour
-					sub_tour_start = std::min(0.0, first_stop_time);
+					sub_tour_start = std::max(0.0, first_stop_time);
 
 					double x_u, y_u;
 					// Start sub-tour at min-start position
