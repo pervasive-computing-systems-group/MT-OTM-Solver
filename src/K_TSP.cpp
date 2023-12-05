@@ -392,7 +392,7 @@ void K_TSP::RunAlgorithm(Solution* solution) {
 			for(int k = 0; k < solution->m_nM; k++) {
 				// Initial desired start time based current depot location
 				double desired_start_time = solution->m_tBSTrajectory.getTimeAt(solution->GetDepotOfPartion(k)->fX,
-						solution->GetTerminalOfPartion(k)->fY);
+						solution->GetDepotOfPartion(k)->fY);
 				desired_times.push_back(desired_start_time);
 			}
 

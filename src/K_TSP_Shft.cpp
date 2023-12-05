@@ -334,9 +334,11 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 
 			// For each sub-tour
 			for(int k = 0; k < solution->m_nM; k++) {
+				Vertex* depot_k = solution->GetDepotOfPartion(k);
+				Vertex* term_k = solution->GetTerminalOfPartion(k);
+
 				// Initial desired start time based current depot location
-				double start_time = solution->m_tBSTrajectory.getTimeAt(solution->GetDepotOfPartion(k)->fX,
-						solution->GetTerminalOfPartion(k)->fY);
+				double start_time = solution->m_tBSTrajectory.getTimeAt(depot_k->fX, depot_k->fY);
 				if(DEBUG_K_TSP_SHFT)
 					printf(" Tour %d - starting @ %.3f\n", k, start_time);
 				double previous_time = 0;
@@ -387,8 +389,6 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 					}
 
 					// Adjust the depot/terminal based on found time
-					Vertex* depot_k = solution->GetDepotOfPartion(k);
-					Vertex* term_k = solution->GetTerminalOfPartion(k);
 					// Determine "mid-time" of tour
 					double old_start_time = solution->m_tBSTrajectory.getTimeAt(depot_k->fX, depot_k->fY);
 					double old_end_time = solution->m_tBSTrajectory.getTimeAt(term_k->fX, term_k->fY);
@@ -458,7 +458,7 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 			for(int k = 0; k < solution->m_nM; k++) {
 				// Initial desired start time based current depot location
 				double desired_start_time = solution->m_tBSTrajectory.getTimeAt(solution->GetDepotOfPartion(k)->fX,
-						solution->GetTerminalOfPartion(k)->fY);
+						solution->GetDepotOfPartion(k)->fY);
 				desired_times.push_back(desired_start_time);
 			}
 

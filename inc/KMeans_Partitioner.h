@@ -48,7 +48,8 @@ struct KPoint {
 	* Computes the (square) Euclidean distance between this point and another
 	*/
 	double distance(KPoint p) {
-		return (p.x - x) * (p.x - x) + (p.y - y) * (p.y - y);
+		double dist = sqrt((p.x - x) * (p.x - x) + (p.y - y) * (p.y - y));
+		return dist;
 	}
 };
 

@@ -234,92 +234,124 @@ Solution::Solution(std::string graph_path, int m, float ct_guess) {
 	// Done reading data, close file
 	file.close();
 
-	// Add depot and terminal vertices based on base station trajectory using predicted "step-sizes"
-	// of the base station for each partition
-	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
-		// The following assumes a linear UGV... hard fail
-		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
-		exit(0);
+	if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_StraightLine) {
+		float tour_duration_step_x = 0;
+		float tour_duration_step_y = 0;
+		float battery_change_ts = BATTERY_SWAP_TIME;
+		float battery_change_step_x = m_tBSTrajectory.mX * battery_change_ts;
+		float battery_change_step_y = m_tBSTrajectory.mY * battery_change_ts;
+
+		if(ct_guess >= 0) {
+			// Determine approximate base station step size per partition based off of given completion time guess
+			float time_less_battery_swap = ct_guess - (battery_change_ts * (m_nM - 1));
+			float time_per_step = time_less_battery_swap / (float)m_nM;
+
+			tour_duration_step_x = time_per_step * m_tBSTrajectory.mX;
+			tour_duration_step_y = time_per_step * m_tBSTrajectory.mY;
+		}
+		else {
+			/*
+			 * Determine approximate base station step size per partition based off of base station trajectory
+			 *
+			 * For now, we are looking at the initial position of the base station and adding the some
+			 * guess of the time to cover 1/m of the SSG. We multiply this duration by the base station
+			 * trajectory vector to get the location of the first terminal (future base station location).
+			 * For every following future base station locations add to the previous estimate the product
+			 * of v_bs and some given battery change-time constant. For the corresponding terminals we
+			 * again add the 1/m * v_bs to the new starting base station location.
+			 */
+	//		tour_duration_step_x = (float)m_nN/m_nM * m_tBSTrajectory.mX;
+	//		tour_duration_step_y = (float)m_nN/m_nM * m_tBSTrajectory.mY;
+
+			// Use the min-spanning-forest as an initial guess
+			float base_line_time = this->GetMinSpanningForestRT();
+
+			// Determine approximate base station step size per partition based off of give completion time guess
+			float time_less_battery_swap = base_line_time - (battery_change_ts * (m_nM - 1));
+			float time_per_step = time_less_battery_swap / (float)m_nM;
+
+			tour_duration_step_x = time_per_step * m_tBSTrajectory.mX;
+			tour_duration_step_y = time_per_step * m_tBSTrajectory.mY;
+		}
+
+		// Find the additional terminals and depots based on the base stations trajectory.
+		// First terminal location
+		float terminal_location_x = m_tBSTrajectory.x + tour_duration_step_x;
+		float terminal_location_y = m_tBSTrajectory.y + tour_duration_step_y;
+
+		// Create total graph G = U ∪ D ∪ P (destinations + terminals and depots)
+		// By convention, we first add the terminals and then add the depots
+		for(; i < (m_nM + m_nN); i++) {
+			// Configure vertex
+			m_pVertexData[i].nID = i;
+			m_pVertexData[i].fX = terminal_location_x;
+			m_pVertexData[i].fY = terminal_location_y;
+			m_pVertexData[i].eVType = E_VertexType::e_Terminal;
+
+			// Update for the next terminal
+			terminal_location_x += battery_change_step_x + tour_duration_step_x;
+			terminal_location_y += battery_change_step_y + tour_duration_step_y;
+		}
+
+		// The first depot is the base stations starting point
+		m_pVertexData[i].nID = i;
+		m_pVertexData[i].fX = m_tBSTrajectory.x;
+		m_pVertexData[i].fY = m_tBSTrajectory.y;
+		m_pVertexData[i].eVType = E_VertexType::e_Depot;
+		i++;
+
+		// Add additional depot locations
+		float depot_location_x = m_tBSTrajectory.x + tour_duration_step_x + battery_change_step_x;
+		float depot_location_y = m_tBSTrajectory.y + tour_duration_step_y + battery_change_step_y;
+		for(; i < m_nNumVertices; i++) {
+			// Configure vertex
+			m_pVertexData[i].nID = i;
+			m_pVertexData[i].fX = depot_location_x;
+			m_pVertexData[i].fY = depot_location_y;
+			m_pVertexData[i].eVType = E_VertexType::e_Depot;
+
+			// Update for the next terminal
+			depot_location_x += battery_change_step_x + tour_duration_step_x;
+			depot_location_y += battery_change_step_y + tour_duration_step_y;
+		}
 	}
-	float tour_duration_step_x = 0;
-	float tour_duration_step_y = 0;
-	float battery_change_ts = BATTERY_SWAP_TIME;
-	float battery_change_step_x = m_tBSTrajectory.mX * battery_change_ts;
-	float battery_change_step_y = m_tBSTrajectory.mY * battery_change_ts;
-
-	if(ct_guess >= 0) {
+	else if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_Sinusoidal) {
 		// Determine approximate base station step size per partition based off of given completion time guess
-		float time_less_battery_swap = ct_guess - (battery_change_ts * (m_nM - 1));
+		float time_less_battery_swap = ct_guess - (BATTERY_SWAP_TIME * (m_nM - 1));
 		float time_per_step = time_less_battery_swap / (float)m_nM;
+		double current_time = 0;
 
-		tour_duration_step_x = time_per_step * m_tBSTrajectory.mX;
-		tour_duration_step_y = time_per_step * m_tBSTrajectory.mY;
+		// Step through the time steps and add depots/terminals
+		for(; i < (m_nM + m_nN); i++) {
+			int depot_i = i + m_nM;
+			double x,y;
+			// Start with the depot
+			m_pVertexData[depot_i].nID = depot_i;
+			m_tBSTrajectory.getPosition(current_time, &x, &y);
+			m_pVertexData[depot_i].fX = x;
+			m_pVertexData[depot_i].fY = y;
+			m_pVertexData[depot_i].eVType = E_VertexType::e_Depot;
+
+			// Move forward
+			current_time += time_per_step;
+
+			// Configure vertex
+			m_pVertexData[i].nID = i;
+			m_tBSTrajectory.getPosition(current_time, &x, &y);
+			m_pVertexData[i].fX = x;
+			m_pVertexData[i].fY = y;
+			m_pVertexData[i].eVType = E_VertexType::e_Terminal;
+
+			// Update for the next sub-tour
+			current_time += BATTERY_SWAP_TIME;
+		}
 	}
 	else {
-		/*
-		 * Determine approximate base station step size per partition based off of base station trajectory
-		 *
-		 * For now, we are looking at the initial position of the base station and adding the some
-		 * guess of the time to cover 1/m of the SSG. We multiply this duration by the base station
-		 * trajectory vector to get the location of the first terminal (future base station location).
-		 * For every following future base station locations add to the previous estimate the product
-		 * of v_bs and some given battery change-time constant. For the corresponding terminals we
-		 * again add the 1/m * v_bs to the new starting base station location.
-		 */
-//		tour_duration_step_x = (float)m_nN/m_nM * m_tBSTrajectory.mX;
-//		tour_duration_step_y = (float)m_nN/m_nM * m_tBSTrajectory.mY;
-
-		// Use the min-spanning-forest as an initial guess
-		float base_line_time = this->GetMinSpanningForestRT();
-
-		// Determine approximate base station step size per partition based off of give completion time guess
-		float time_less_battery_swap = base_line_time - (battery_change_ts * (m_nM - 1));
-		float time_per_step = time_less_battery_swap / (float)m_nM;
-
-		tour_duration_step_x = time_per_step * m_tBSTrajectory.mX;
-		tour_duration_step_y = time_per_step * m_tBSTrajectory.mY;
+		// Not sure what trajectory this is... hard fail!
+		printf("[ERROR] : Solution::Solution I : Given unknown UGV trajectory\n");
+		exit(0);
 	}
 
-	// Find the additional terminals and depots based on the base stations trajectory.
-	// First terminal location
-	float terminal_location_x = m_tBSTrajectory.x + tour_duration_step_x;
-	float terminal_location_y = m_tBSTrajectory.y + tour_duration_step_y;
-
-	// Create total graph G = U ∪ D ∪ P (destinations + terminals and depots)
-	// By convention, we first add the terminals and then add the depots
-	for(; i < (m_nM + m_nN); i++) {
-		// Configure vertex
-		m_pVertexData[i].nID = i;
-		m_pVertexData[i].fX = terminal_location_x;
-		m_pVertexData[i].fY = terminal_location_y;
-		m_pVertexData[i].eVType = E_VertexType::e_Terminal;
-
-		// Update for the next terminal
-		terminal_location_x += battery_change_step_x + tour_duration_step_x;
-		terminal_location_y += battery_change_step_y + tour_duration_step_y;
-	}
-
-	// The first depot is the base stations starting point
-	m_pVertexData[i].nID = i;
-	m_pVertexData[i].fX = m_tBSTrajectory.x;
-	m_pVertexData[i].fY = m_tBSTrajectory.y;
-	m_pVertexData[i].eVType = E_VertexType::e_Depot;
-	i++;
-
-	// Add additional depot locations
-	float depot_location_x = m_tBSTrajectory.x + tour_duration_step_x + battery_change_step_x;
-	float depot_location_y = m_tBSTrajectory.y + tour_duration_step_y + battery_change_step_y;
-	for(; i < m_nNumVertices; i++) {
-		// Configure vertex
-		m_pVertexData[i].nID = i;
-		m_pVertexData[i].fX = depot_location_x;
-		m_pVertexData[i].fY = depot_location_y;
-		m_pVertexData[i].eVType = E_VertexType::e_Depot;
-
-		// Update for the next terminal
-		depot_location_x += battery_change_step_x + tour_duration_step_x;
-		depot_location_y += battery_change_step_y + tour_duration_step_y;
-	}
 
 	// Sanity print
 	if(DEBUG_SOLUTION) {
@@ -443,7 +475,7 @@ Solution::Solution(std::string graph_path, int m, float ct_guess, float* A) {
 	// Create initial base station
 	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
 		// The following assumes a linear UGV... hard fail
-		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
+		printf("[ERROR] : Solution::Solution II : Given non-linear UGV, expected linear\n");
 		exit(0);
 	}
 
@@ -577,7 +609,7 @@ Solution::Solution(Solution* cp_solution, float ct, float* A) {
 	// Create initial base station
 	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
 		// The following assumes a linear UGV... hard fail
-		printf("[ERROR] : Solution::Solution : Given non-linear UGV, expected linear\n");
+		printf("[ERROR] : Solution::Solution III : Given non-linear UGV, expected linear\n");
 		exit(0);
 	}
 
@@ -998,7 +1030,7 @@ void Solution::PrintLKHData() {
 }
 
 // Prints out the data to be used in the TSPLIB file format for the LKH solver for the vertices in lst
-void Solution::PrintLKHData(std::vector<Vertex*> &lst) {
+void Solution::PrintLKHData(std::vector<Vertex*> &lst, double multiplier) {
 	printf("Creating LKH Data Files\n");
 
 	// Mark which vertices are the depot and terminal (assumed to be last and second to last)
@@ -1047,7 +1079,7 @@ void Solution::PrintLKHData(std::vector<Vertex*> &lst) {
 			}
 			else {
 				if((v->nID == depot_id) || (u->nID == depot_id) || (u->nID == terminal_id) || (v->nID == terminal_id)) {
-					fprintf(pDataFile, "%.5f\t", v->GetDistanceTo(u)*1000 );
+					fprintf(pDataFile, "%f\t", v->GetDistanceTo(u)*multiplier );
 				}
 				else {
 					fprintf(pDataFile, "%.5f\t", v->GetDistanceTo(u));
@@ -1160,120 +1192,123 @@ float Solution::TimeToRunSolution(E_VelocityFlag fixedVelocityFlag, bool bLagran
 		return std::numeric_limits<float>::max();
 	}
 
-	if(SANITY_PRINT)
-		printf("\nCalculating Distance %d partitions:\n", m_nM);
-
-	float t_tot = 0;
-
-	// Add up the time to complete each partitioned path
-	for(int i = 0; i < m_nM; i++) {
-		float legDist = DistanceOfPartition(i);
-		if(SANITY_PRINT)
-			printf(" legDist = %f\n", legDist);
-
-		// Check to see if we are fixing the velocity
-		if(fixedVelocityFlag == E_VelocityFlag::e_FixedOpt) {
-			// Fix velocity at the optimal velocity (accept max distance)
-			if(legDist <= DIST_MAX) {
-				// Fly at max speed
-				float t = legDist * (1.0/V_OPT);
-				t_tot += t;
-				if(1)
-					printf(" go v = %f, t = %f\n", V_OPT, t);
-			}
-			else {
-				// This is too long to fly!
-				if(1)
-					printf(" TOO FAR! dist = %f\n", legDist);
-				return std::numeric_limits<float>::max();
-			}
-		}
-		else if(fixedVelocityFlag == E_VelocityFlag::e_FixedMax) {
-			// Fix velocity at max velocity (only accept optimal distances)
-			if(legDist <= DIST_OPT) {
-				// Fly at max speed
-				float t = legDist * (1.0/V_MAX);
-				t_tot += t;
-				if(1)
-					printf(" go v = %f, t = %f\n", V_OPT, t);
-			}
-			else {
-				// This is too long to fly!
-				if(1)
-					printf(" TOO FAR! dist = %f\n", legDist);
-				return std::numeric_limits<float>::max();
-			}
-		}
-		else if(fixedVelocityFlag == E_VelocityFlag::e_FixedPowMin) {
-			// Fix velocity at max velocity (only accept optimal distances)
-			if(legDist <= DIST_POW_MIN) {
-				// Fly at max speed
-				float t = legDist * (1.0/V_POW_MIN);
-				t_tot += t;
-				if(1)
-					printf(" go v = %f, t = %f\n", V_POW_MIN, t);
-			}
-			else {
-				// This is too long to fly!
-				if(1)
-					printf(" TOO FAR! dist = %f\n", legDist);
-				return std::numeric_limits<float>::max();
-			}
-		}
-		// Velocity isn't fixed, modulate velocity
-		else if(fixedVelocityFlag == E_VelocityFlag::e_NotFixed) {
-			if(m_bInheritedSpeeds) {
-				// Go the inherited speed
-				float v = this->m_vSpeeds.at(i);
-				float t = legDist * (1.0/v);
-				t_tot += t;
-				if(SANITY_PRINT)
-					printf(" go v = %f, t = %f\n", v, t);
-			}
-			else if(legDist > DIST_MAX) {
-				if(bLagrangianRelaxation) {
-					// Relax the max-distance constraint (used for training)
-					float t = legDist * (1.0/V_OPT);
-					// Add penalty for over-shooting
-					t += (legDist - DIST_MAX) * (1.0/V_MAX);
-					t_tot += t;
-
-					if(SANITY_PRINT)
-						printf(" TOO FAR! t = %f\n", t);
-				}
-				else {
-					// This is too long to fly!
-					return std::numeric_limits<float>::max();
-				}
-			}
-			else if(legDist <= DIST_OPT) {
-				// Fly at max speed
-				float t = legDist * (1.0/V_MAX);
-				t_tot += t;
-				if(SANITY_PRINT)
-					printf(" go V_MAX = %f, t = %f\n", V_MAX, t);
-			}
-			else {
-				// Determine fastest speed to move through this leg
-				float v = GetMaxVelocity(legDist);
-
-				float t = legDist * (1.0/v);
-				t_tot += t;
-
-				if(SANITY_PRINT)
-					printf(" go v = %f, t = %f\n", v, t);
-			}
-		}
-		else {
-			// Something went wrong here...
-			printf("[ERROR] : Solution::TimeToRunSolution() unexpected velocity flag, %d\n", fixedVelocityFlag);
-			exit(1);
-		}
-	}
-
-	t_tot += BATTERY_SWAP_TIME * (m_nM - 1);
-
-	return t_tot;
+	// This should be easy... just return the time that the GV is at the final terminal
+	return m_tBSTrajectory.getTimeAt(GetTerminalOfPartion(m_nM-1)->fX, GetTerminalOfPartion(m_nM-1)->fY);
+//
+//	if(SANITY_PRINT)
+//		printf("\nCalculating Distance %d partitions:\n", m_nM);
+//
+//	float t_tot = 0;
+//
+//	// Add up the time to complete each partitioned path
+//	for(int i = 0; i < m_nM; i++) {
+//		float legDist = DistanceOfPartition(i);
+//		if(SANITY_PRINT)
+//			printf(" legDist = %f\n", legDist);
+//
+//		// Check to see if we are fixing the velocity
+//		if(fixedVelocityFlag == E_VelocityFlag::e_FixedOpt) {
+//			// Fix velocity at the optimal velocity (accept max distance)
+//			if(legDist <= DIST_MAX) {
+//				// Fly at max speed
+//				float t = legDist * (1.0/V_OPT);
+//				t_tot += t;
+//				if(1)
+//					printf(" go v = %f, t = %f\n", V_OPT, t);
+//			}
+//			else {
+//				// This is too long to fly!
+//				if(1)
+//					printf(" TOO FAR! dist = %f\n", legDist);
+//				return std::numeric_limits<float>::max();
+//			}
+//		}
+//		else if(fixedVelocityFlag == E_VelocityFlag::e_FixedMax) {
+//			// Fix velocity at max velocity (only accept optimal distances)
+//			if(legDist <= DIST_OPT) {
+//				// Fly at max speed
+//				float t = legDist * (1.0/V_MAX);
+//				t_tot += t;
+//				if(1)
+//					printf(" go v = %f, t = %f\n", V_OPT, t);
+//			}
+//			else {
+//				// This is too long to fly!
+//				if(1)
+//					printf(" TOO FAR! dist = %f\n", legDist);
+//				return std::numeric_limits<float>::max();
+//			}
+//		}
+//		else if(fixedVelocityFlag == E_VelocityFlag::e_FixedPowMin) {
+//			// Fix velocity at max velocity (only accept optimal distances)
+//			if(legDist <= DIST_POW_MIN) {
+//				// Fly at max speed
+//				float t = legDist * (1.0/V_POW_MIN);
+//				t_tot += t;
+//				if(1)
+//					printf(" go v = %f, t = %f\n", V_POW_MIN, t);
+//			}
+//			else {
+//				// This is too long to fly!
+//				if(1)
+//					printf(" TOO FAR! dist = %f\n", legDist);
+//				return std::numeric_limits<float>::max();
+//			}
+//		}
+//		// Velocity isn't fixed, modulate velocity
+//		else if(fixedVelocityFlag == E_VelocityFlag::e_NotFixed) {
+//			if(m_bInheritedSpeeds) {
+//				// Go the inherited speed
+//				float v = this->m_vSpeeds.at(i);
+//				float t = legDist * (1.0/v);
+//				t_tot += t;
+//				if(SANITY_PRINT)
+//					printf(" go v = %f, t = %f\n", v, t);
+//			}
+//			else if(legDist > DIST_MAX) {
+//				if(bLagrangianRelaxation) {
+//					// Relax the max-distance constraint (used for training)
+//					float t = legDist * (1.0/V_OPT);
+//					// Add penalty for over-shooting
+//					t += (legDist - DIST_MAX) * (1.0/V_MAX);
+//					t_tot += t;
+//
+//					if(SANITY_PRINT)
+//						printf(" TOO FAR! t = %f\n", t);
+//				}
+//				else {
+//					// This is too long to fly!
+//					return std::numeric_limits<float>::max();
+//				}
+//			}
+//			else if(legDist <= DIST_OPT) {
+//				// Fly at max speed
+//				float t = legDist * (1.0/V_MAX);
+//				t_tot += t;
+//				if(SANITY_PRINT)
+//					printf(" go V_MAX = %f, t = %f\n", V_MAX, t);
+//			}
+//			else {
+//				// Determine fastest speed to move through this leg
+//				float v = GetMaxVelocity(legDist);
+//
+//				float t = legDist * (1.0/v);
+//				t_tot += t;
+//
+//				if(SANITY_PRINT)
+//					printf(" go v = %f, t = %f\n", v, t);
+//			}
+//		}
+//		else {
+//			// Something went wrong here...
+//			printf("[ERROR] : Solution::TimeToRunSolution() unexpected velocity flag, %d\n", fixedVelocityFlag);
+//			exit(1);
+//		}
+//	}
+//
+//	t_tot += BATTERY_SWAP_TIME * (m_nM - 1);
+//
+//	return t_tot;
 }
 
 // Return the distance (in meters) of partition n of this solution
@@ -1614,85 +1649,168 @@ bool Solution::CorrectSolution(E_VelocityFlag velocityFlag) {
 		if(SANITY_PRINT)
 			printf("\nCorrecting Solution\n");
 
-		// Correct each partition in turn
-		for(int i = 0; i < m_nM; i++) {
-			/// Correct the position of the depot
-			if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
-				// The following assumes a linear UGV... hard fail
-				printf("[ERROR] : Solution::CorrectSolution : Given non-linear UGV, expected linear\n");
-				exit(0);
-			}
-
-			if(i > 0) {
-				GetDepotOfPartion(i)->fX = GetTerminalOfPartion(i-1)->fX + BATTERY_SWAP_TIME*this->m_tBSTrajectory.mX;
-			}
-
-			/// Correct the position of the terminal
-			// Create parent list and set all parents to -1
-			int* parentList = new int[m_nNumVertices];
-			for(int i = 0; i < m_nNumVertices; i++) {
-				parentList[i] = -1;
-			}
-
-			// Run DFS. Should return true
-			int t = GetTerminalOfPartion(i)->nID, d = GetDepotOfPartion(i)->nID;
-			parentList[d] = d;
-			if(!Graph_Theory_Algorithms::DFS_TopAdjMtrx(m_pAdjMatrix, parentList, m_nNumVertices, d, t)) {
-				printf(" I' does not contain a path from %d to %d!\n", d, t);
-				m_bFeasible = false;
-				ret_val = false;
-			}
-			else {
-				// Add the stops on this tour (in correct order) to a list
-				bool foundEnd = false;
-				std::list<Vertex*> pathList;
-				{
-					// Start with ideal-stop
-					int last = GetTerminalOfPartion(i)->nID;
-
-					// Walk through path backwards
-					while(parentList[last] != GetDepotOfPartion(i)->nID) {
-						// Grab next stop
-						int next = parentList[last];
-						// Add to stack
-						pathList.push_front(m_pVertexData + next);
-						// Update
-						last = next;
-					}
-					pathList.push_front(GetDepotOfPartion(i));
+		if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_StraightLine) {
+			// Correct each partition in turn
+			for(int i = 0; i < m_nM; i++) {
+				/// Correct the position of the depot
+				if(i > 0) {
+					GetDepotOfPartion(i)->fX = GetTerminalOfPartion(i-1)->fX + BATTERY_SWAP_TIME*this->m_tBSTrajectory.mX;
 				}
 
-				// Sanity print
-				if(DEBUG_SOLUTION) {
-					printf("Sub-tour %d:\n", i);
-					for(Vertex* v : pathList) {
-						printf(" %d", v->nID);
-					}
-					printf("\n");
+				/// Correct the position of the terminal
+				// Create parent list and set all parents to -1
+				int* parentList = new int[m_nNumVertices];
+				for(int i = 0; i < m_nNumVertices; i++) {
+					parentList[i] = -1;
 				}
 
-				// Determine the actual terminal position
-				bool run_again = true;
-				while(run_again) {
-					float old_dist = DistanceOfPartition(i);
-					if(old_dist > DIST_MAX) {
-						run_again = false;
-						m_bFeasible = false;
-						ret_val = false;
+				// Run DFS. Should return true
+				int t = GetTerminalOfPartion(i)->nID, d = GetDepotOfPartion(i)->nID;
+				parentList[d] = d;
+				if(!Graph_Theory_Algorithms::DFS_TopAdjMtrx(m_pAdjMatrix, parentList, m_nNumVertices, d, t)) {
+					printf(" I' does not contain a path from %d to %d!\n", d, t);
+					m_bFeasible = false;
+					ret_val = false;
+				}
+				else {
+					// Add the stops on this tour (in correct order) to a list
+					bool foundEnd = false;
+					std::list<Vertex*> pathList;
+					{
+						// Start with ideal-stop
+						int last = GetTerminalOfPartion(i)->nID;
+
+						// Walk through path backwards
+						while(parentList[last] != GetDepotOfPartion(i)->nID) {
+							// Grab next stop
+							int next = parentList[last];
+							// Add to stack
+							pathList.push_front(m_pVertexData + next);
+							// Update
+							last = next;
+						}
+						pathList.push_front(GetDepotOfPartion(i));
 					}
-					else {
-						float fV_u = GetMaxVelocity(old_dist, velocityFlag);
-						determineTerminalLocation(pathList, fV_u, GetTerminalOfPartion(i));
-						float new_dist = DistanceOfPartition(i);
-						if(DEBUG_SOLUTION)
-							printf(" old_dist: %f, velocity: %f, new_dist: %f, difference: %f\n", old_dist,
-									fV_u, new_dist, abs(old_dist - new_dist));
-						if(abs(old_dist - new_dist) <= ST_DIST_TOLERANCE) {
+
+					// Sanity print
+					if(DEBUG_SOLUTION) {
+						printf("Sub-tour %d:\n", i);
+						for(Vertex* v : pathList) {
+							printf(" %d", v->nID);
+						}
+						printf("\n");
+					}
+
+					// Determine the actual terminal position
+					bool run_again = true;
+					while(run_again) {
+						float old_dist = DistanceOfPartition(i);
+						if(old_dist > DIST_MAX) {
 							run_again = false;
+							m_bFeasible = false;
+							ret_val = false;
+						}
+						else {
+							float fV_u = GetMaxVelocity(old_dist, velocityFlag);
+							determineTerminalLocation(pathList, fV_u, GetTerminalOfPartion(i));
+							float new_dist = DistanceOfPartition(i);
+							if(DEBUG_SOLUTION)
+								printf(" old_dist: %f, velocity: %f, new_dist: %f, difference: %f\n", old_dist,
+										fV_u, new_dist, abs(old_dist - new_dist));
+							if(abs(old_dist - new_dist) <= ST_DIST_TOLERANCE) {
+								run_again = false;
+							}
 						}
 					}
 				}
 			}
+		}
+		else if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_Sinusoidal) {
+			// TODO: here...
+			// Correct each partition in time space
+			double current_time = 0;
+			for(int i = 0; i < m_nM; i++) {
+				/// Correct the depot (CAUTION! We assume the first depot always starts at t=0!)
+				double x, y;
+				m_tBSTrajectory.getPosition(current_time, &x, &y);
+				GetDepotOfPartion(i)->fX = x;
+				GetDepotOfPartion(i)->fY = y;
+
+				/// Correct the position of the terminal
+				// Create parent list and set all parents to -1
+				int* parentList = new int[m_nNumVertices];
+				for(int i = 0; i < m_nNumVertices; i++) {
+					parentList[i] = -1;
+				}
+
+				// Run DFS. Should return true
+				int t = GetTerminalOfPartion(i)->nID, d = GetDepotOfPartion(i)->nID;
+				parentList[d] = d;
+				if(!Graph_Theory_Algorithms::DFS_TopAdjMtrx(m_pAdjMatrix, parentList, m_nNumVertices, d, t)) {
+					printf(" I' does not contain a path from %d to %d!\n", d, t);
+					m_bFeasible = false;
+					ret_val = false;
+				}
+				else {
+					// Add the stops on this tour (in correct order) to a list
+					bool foundEnd = false;
+					std::list<Vertex*> pathList;
+					{
+						// Start with ideal-stop
+						int last = GetTerminalOfPartion(i)->nID;
+
+						// Walk through path backwards
+						while(parentList[last] != GetDepotOfPartion(i)->nID) {
+							// Grab next stop
+							int next = parentList[last];
+							// Add to stack
+							pathList.push_front(m_pVertexData + next);
+							// Update
+							last = next;
+						}
+						pathList.push_front(GetDepotOfPartion(i));
+					}
+
+					// Sanity print
+					if(DEBUG_SOLUTION) {
+						printf("Sub-tour %d:\n", i);
+						for(Vertex* v : pathList) {
+							printf(" %d", v->nID);
+						}
+						printf("\n");
+					}
+
+					// Determine the actual terminal position
+					bool run_again = true;
+					while(run_again) {
+						float old_dist = DistanceOfPartition(i);
+						if(old_dist > DIST_MAX) {
+							run_again = false;
+							m_bFeasible = false;
+							ret_val = false;
+						}
+						else {
+							float fV_u = GetMaxVelocity(old_dist, velocityFlag);
+							determineTerminalLocation(pathList, fV_u, GetTerminalOfPartion(i));
+							float new_dist = DistanceOfPartition(i);
+							if(DEBUG_SOLUTION)
+								printf(" old_dist: %f, velocity: %f, new_dist: %f, difference: %f\n", old_dist,
+										fV_u, new_dist, abs(old_dist - new_dist));
+							if(abs(old_dist - new_dist) <= ST_DIST_TOLERANCE) {
+								run_again = false;
+							}
+						}
+					}
+				}
+
+				// Update time
+				current_time = m_tBSTrajectory.getTimeAt(GetTerminalOfPartion(i)->fX, GetTerminalOfPartion(i)->fY) + BATTERY_SWAP_TIME;
+			}
+		}
+		else {
+			// The following assumes a linear UGV... hard fail
+			printf("[ERROR] : Solution::CorrectSolution : Given unknown UGV trajectory\n");
+			exit(0);
 		}
 	}
 
@@ -1748,9 +1866,7 @@ double Solution::GetMaxVelocity(double dist, E_VelocityFlag velocityFlag) {
 /*
  * Determine the location of the terminal using sub-tour subTour and UAV velocity magnitude fV_u.
  *
- * This function assumes that the first vertex on the the list is the depot of the sub-tour. We
- * also assume that the base station's velocity vector only points in the positive x-direction
- * (i.e. y_b = 0).
+ * This function assumes that the first vertex on the the list is the depot of the sub-tour.
  */
 void Solution::determineTerminalLocation(std::list<Vertex*> &subTour, float fV_u, Vertex* terminal) {
 	// Do some fun math here...
@@ -1766,63 +1882,95 @@ void Solution::determineTerminalLocation(std::list<Vertex*> &subTour, float fV_u
 		if(DEBUG_SOLUTION)
 			printf("  Found subTour dist = %f, time = %f\n", dist, t_l);
 
-		if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+		if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_StraightLine) {
+			// New x coord of depot
+			float x_b = subTour.front()->fX + m_tBSTrajectory.mX*t_l;
+			// New x, y coords of UAV
+			float x_u = subTour.back()->fX;
+			float y_u = subTour.back()->fY;
+			// Depot position vector relative to UAV
+			float p_x = x_b - x_u;
+			float p_y = -y_u;
+			// Depot velocity vector
+			float v_x = m_tBSTrajectory.mX;
+			float v_y = 0;
+			// UAV speed
+			float s = fV_u;
+
+			// The math to find the collision time is: || P + V*t_c || = s*t_c . This turns into a polynomial
+			// First coefficient: V.V - s^2
+			float a = (v_x*v_x + v_y*v_y - s*s);
+			// Second coefficient: 2(P.V)
+			float b = 2*(p_x*v_x + p_y*v_y);
+			// Third coefficient: P.P
+			float c = p_x*p_x + p_y*p_y;
+
+			// Find roots of function
+			Roots roots;
+			roots.FindRoots(a, b, c);
+
+			// Time till collision
+			float t_c = 0;
+
+			// Grab correct root
+			if(roots.root1 >= 0) {
+				t_c = roots.root1;
+			}
+			else if(roots.root2 >= 0) {
+				t_c = roots.root2;
+			}
+			else {
+				// Something isn't right...
+				fprintf(stderr, "[ERROR] Solution : determineTerminalLocation() Did not find positive roots\n");
+				// Hard-fail
+				exit(1);
+			}
+
+			// Assign found values to new terminal
+			float x_depot = x_b + t_c*m_tBSTrajectory.mX;
+			if(DEBUG_SOLUTION)
+				printf(" Depot moves from (%f, %f) to (%f, %f)\n", subTour.front()->fX, 0.0, x_depot, 0.0);
+			terminal->fX = x_depot;
+			terminal->fY = 0;
+		}
+		else if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_Sinusoidal) {
+			// This is a little more fun... first determine the start time of the tour
+			double start_time = m_tBSTrajectory.getTimeAt(subTour.front()->fX, subTour.front()->fY);
+
+			// Repeat until we get a consistent total time...
+			bool run_again = true;
+			while(run_again) {
+				// Add in the time it takes to move to the final waypoint on this sub-tour
+				double return_time = start_time + t_l;
+				// Where is the GV at?
+				double gv_x, gv_y;
+				m_tBSTrajectory.getPosition(return_time, &gv_x, &gv_y);
+				// Assume that we arrive at return-time
+				float x_u = subTour.back()->fX;
+				float y_u = subTour.back()->fY;
+				double dist_to_gv = sqrt(pow(subTour.back()->fX - gv_x, 2) + pow(subTour.back()->fY - gv_y, 2));
+				double total_dist = dist + dist_to_gv;
+				double new_tl = total_dist/fV_u;
+				if(abs(new_tl - t_l) < 0.5) {
+					run_again = false;
+					// Assign found values to new terminal
+					if(DEBUG_SOLUTION)
+						printf(" Depot moves from (%f, %f) to (%f, %f)\n", subTour.front()->fX, 0.0, gv_x, gv_y);
+					terminal->fX = gv_x;
+					terminal->fY = gv_y;
+				}
+				else {
+					// Update the time we think it takes to run this sub-tour
+					t_l = new_tl;
+				}
+			}
+		}
+		else {
 			// The following assumes a linear UGV... hard fail
 			printf("[ERROR] : Solution::determineTerminalLocation : Given non-linear UGV, expected linear\n");
 			exit(0);
 		}
 
-		// New x coord of depot
-		float x_b = subTour.front()->fX + m_tBSTrajectory.mX*t_l;
-		// New x, y coords of UAV
-		float x_u = subTour.back()->fX;
-		float y_u = subTour.back()->fY;
-		// Depot position vector relative to UAV
-		float p_x = x_b - x_u;
-		float p_y = -y_u;
-		// Depot velocity vector
-		float v_x = m_tBSTrajectory.mX;
-		float v_y = 0;
-		// UAV speed
-		float s = fV_u;
-
-		// The math to find the collision time is: || P + V*t_c || = s*t_c . This turns into a polynomial
-		// First coefficient: V.V - s^2
-		float a = (v_x*v_x + v_y*v_y - s*s);
-		// Second coefficient: 2(P.V)
-		float b = 2*(p_x*v_x + p_y*v_y);
-		// Third coefficient: P.P
-		float c = p_x*p_x + p_y*p_y;
-
-		// Find roots of function
-		Roots roots;
-		roots.FindRoots(a, b, c);
-
-		// Time till collision
-		float t_c = 0;
-
-		// Grab correct root
-		if(roots.root1 >= 0) {
-			t_c = roots.root1;
-		}
-		else if(roots.root2 >= 0) {
-			t_c = roots.root2;
-		}
-		else {
-			// Something isn't right...
-			fprintf(stderr, "[ERROR] Solution : determineTerminalLocation() Did not find positive roots\n");
-			// Hard-fail
-			exit(1);
-		}
-
-		// Assign found values to new terminal
-		float x_depot = x_b + t_c*m_tBSTrajectory.mX;
-		if(DEBUG_SOLUTION)
-			printf(" Depot moves from (%f, %f) to (%f, %f)\n", subTour.front()->fX, 0.0, x_depot, 0.0);
-		terminal->fX = x_depot;
-		terminal->fY = 0;
-		terminal->nID = -1;
-		terminal->eVType = E_VertexType::e_Terminal;
 	}
 	else {
 		// Single depot is not a path!

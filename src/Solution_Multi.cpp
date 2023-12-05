@@ -263,67 +263,104 @@ void Solution_Multi::classConstructor(std::string graph_path, int m, int numUAVs
 }
 
 void Solution_Multi::place_depotsAndTerminals(double* A) {
-	// Add depot and terminal vertices based on base station trajectory using predicted "step-sizes"
-	// of the base station for each partition
-	// TODO: Fix for non-linear setups
-	if(m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
-		printf("[ERROR] : Solution_Multi::place_depotsAndTerminals : function does not work for non-linear inputs!\n");
+	// Add depot and terminal vertices based on base station trajectory
+	if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_StraightLine) {
+		// Use predicted "step-sizes" of the base station for each partition
+		float battery_change_step_x = m_tBSTrajectory.mX * BATTERY_SWAP_TIME;
+		float battery_change_step_y = m_tBSTrajectory.mY * BATTERY_SWAP_TIME;
+
+		// Track the position of the base station while we step through sub-tours
+		float* current_loc_x = new float[m_nNumUAVs];
+		float* current_loc_y = new float[m_nNumUAVs];
+
+		// Each UAV starts at the same starting point
+		for(int i = 0; i < m_nNumUAVs; i++) {
+			current_loc_x[i] = m_tBSTrajectory.x;
+			current_loc_y[i] = m_tBSTrajectory.y;
+		}
+
+		// By convention, we first add the terminals and then add the depots
+		for(int i = m_nN, j = 0; i < (m_nM + m_nN); i++, j++) {
+			// Rotate through the UAVs
+			int nUAV_ID = j%m_nNumUAVs;
+
+			// Add depot
+			int depot_id = i + m_nM;
+			m_pVertexData[depot_id].nID = depot_id;
+			m_pVertexData[depot_id].fX = current_loc_x[nUAV_ID];
+			m_pVertexData[depot_id].fY = current_loc_y[nUAV_ID];
+			m_pVertexData[depot_id].eVType = E_VertexType::e_Depot;
+			if(DEBUG_MULT_SOLUTION)
+				printf(" depot at x:%f, y:%f\n", m_pVertexData[depot_id].fX, m_pVertexData[depot_id].fY);
+
+			if(DEBUG_MULT_SOLUTION)
+				printf(" time for subtour:%f\n", A[j]);
+
+			// Move forward
+			float tour_duration_step_x = (A[j] * m_tBSTrajectory.mX);
+			float tour_duration_step_y = (A[j] * m_tBSTrajectory.mY);
+			current_loc_x[nUAV_ID] += tour_duration_step_x;
+			current_loc_y[nUAV_ID] += tour_duration_step_y;
+			if(DEBUG_MULT_SOLUTION)
+				printf(" move step by x:%f, y:%f\n", tour_duration_step_x, tour_duration_step_y);
+
+			// Add terminal
+			m_pVertexData[i].nID = i;
+			m_pVertexData[i].fX = current_loc_x[nUAV_ID];
+			m_pVertexData[i].fY = current_loc_y[nUAV_ID];
+			m_pVertexData[i].eVType = E_VertexType::e_Terminal;
+			if(DEBUG_MULT_SOLUTION)
+				printf(" terminal at x:%f, y:%f\n", m_pVertexData[i].fX, m_pVertexData[i].fY);
+
+			// Update for the next depot
+			current_loc_x[nUAV_ID] += battery_change_step_x;
+			current_loc_y[nUAV_ID] += battery_change_step_y;
+		}
+
+		delete[] current_loc_x;
+		delete[] current_loc_y;
+	}
+	else if(m_tBSTrajectory.pd_type == E_TrajFuncType::e_Sinusoidal) {
+		// Use ground vehicle trajectory function to determine where the base station is at
+		float current_time = 0;
+
+		// By convention, we first add the terminals and then add the depots
+		for(int i = m_nN, j = 0; i < (m_nM + m_nN); i++, j++) {
+			if(DEBUG_MULT_SOLUTION)
+				printf(" subtour start:%.3f, duration:%.3f\n", current_time, A[j]);
+
+			// Add depot
+			int depot_id = i + m_nM;
+			double x,y;
+			m_tBSTrajectory.getPosition(current_time, &x, &y);
+			m_pVertexData[depot_id].nID = depot_id;
+			m_pVertexData[depot_id].fX = x;
+			m_pVertexData[depot_id].fY = y;
+			m_pVertexData[depot_id].eVType = E_VertexType::e_Depot;
+			if(DEBUG_MULT_SOLUTION)
+				printf(" depot at x:%f, y:%f\n", m_pVertexData[depot_id].fX, m_pVertexData[depot_id].fY);
+
+			// Update time
+			current_time += A[j];
+
+			// Add terminal
+			m_tBSTrajectory.getPosition(current_time, &x, &y);
+			m_pVertexData[i].nID = i;
+			m_pVertexData[i].fX = x;
+			m_pVertexData[i].fY = y;
+			m_pVertexData[i].eVType = E_VertexType::e_Terminal;
+			if(DEBUG_MULT_SOLUTION)
+				printf(" terminal at x:%f, y:%f\n", m_pVertexData[i].fX, m_pVertexData[i].fY);
+
+			// Update time for next depot
+			current_time += BATTERY_SWAP_TIME;
+		}
+	}
+	else {
+		printf("[ERROR] : Solution_Multi::place_depotsAndTerminals : Unknown trajectory type!\n");
 
 		exit(0);
 	}
 
-	float battery_change_step_x = m_tBSTrajectory.mX * BATTERY_SWAP_TIME;
-	float battery_change_step_y = m_tBSTrajectory.mY * BATTERY_SWAP_TIME;
-
-	// Track the position of the base station while we step through sub-tours
-	float* current_loc_x = new float[m_nNumUAVs];
-	float* current_loc_y = new float[m_nNumUAVs];
-
-	// Each UAV starts at the same starting point
-	for(int i = 0; i < m_nNumUAVs; i++) {
-		current_loc_x[i] = m_tBSTrajectory.x;
-		current_loc_y[i] = m_tBSTrajectory.y;
-	}
-
-	// By convention, we first add the terminals and then add the depots
-	for(int i = m_nN, j = 0; i < (m_nM + m_nN); i++, j++) {
-		// Rotate through the UAVs
-		int nUAV_ID = j%m_nNumUAVs;
-
-		// Add depot
-		int depot_id = i + m_nM;
-		m_pVertexData[depot_id].nID = depot_id;
-		m_pVertexData[depot_id].fX = current_loc_x[nUAV_ID];
-		m_pVertexData[depot_id].fY = current_loc_y[nUAV_ID];
-		m_pVertexData[depot_id].eVType = E_VertexType::e_Depot;
-		if(DEBUG_MULT_SOLUTION)
-			printf(" depot at x:%f, y:%f\n", m_pVertexData[depot_id].fX, m_pVertexData[depot_id].fY);
-
-		if(DEBUG_MULT_SOLUTION)
-			printf(" time for subtour:%f\n", A[j]);
-
-		// Move forward
-		float tour_duration_step_x = (A[j] * m_tBSTrajectory.mX);
-		float tour_duration_step_y = (A[j] * m_tBSTrajectory.mY);
-		current_loc_x[nUAV_ID] += tour_duration_step_x;
-		current_loc_y[nUAV_ID] += tour_duration_step_y;
-		if(DEBUG_MULT_SOLUTION)
-			printf(" move step by x:%f, y:%f\n", tour_duration_step_x, tour_duration_step_y);
-
-		// Add terminal
-		m_pVertexData[i].nID = i;
-		m_pVertexData[i].fX = current_loc_x[nUAV_ID];
-		m_pVertexData[i].fY = current_loc_y[nUAV_ID];
-		m_pVertexData[i].eVType = E_VertexType::e_Terminal;
-		if(DEBUG_MULT_SOLUTION)
-			printf(" terminal at x:%f, y:%f\n", m_pVertexData[i].fX, m_pVertexData[i].fY);
-
-		// Update for the next depot
-		current_loc_x[nUAV_ID] += battery_change_step_x;
-		current_loc_y[nUAV_ID] += battery_change_step_y;
-	}
-
-	delete[] current_loc_x;
-	delete[] current_loc_y;
 }
 

@@ -6,6 +6,7 @@ import matplotlib.animation as animation
 from matplotlib.animation import PillowWriter
 from IPython import display
 from matplotlib import rc
+import numpy as np
 rc('font',**{'family':'serif','serif':['Times']})
 rc('text', usetex=True)
 
@@ -35,28 +36,6 @@ def calculate_distance(x1,y1,x2,y2):
     return ((x2 - x1)**2 + (y2 - y1)**2)**.5
 
 
-# Un-comment the following to print min-spanning tree
-# forest_file = open("forest_output.txt")
-# forest_raw = forest_file.readlines()
-# forest_file.close()
-#
-# start = []
-# end = []
-# for i in forest_raw:
-#     temp = i.split()
-#     start.append(int(temp[0]))
-#     end.append(int(temp[1]))
-#
-# fig2, forest2 = plt.subplots()
-# forest2.scatter(xs[0:n],ys[0:n])
-# forest2.scatter(xs[n:n+m], ys[n:n+m],marker = "s")
-# forest2.scatter(xs[n+m:], ys[n+m:], marker = "D")
-
-# for i in range(0, len(start)):
-#     tempx = [xs[start[i]], xs[end[i]]]
-#     tempy = [ys[start[i]], ys[end[i]]]
-#     forest2.plot(tempx, tempy)
-
 path_file = open("path_output.txt")
 path_raw = path_file.readlines()
 path_file.close()
@@ -84,6 +63,14 @@ fig3, forest3 = plt.subplots()
 forest3.scatter(xs[0:n],ys[0:n])
 forest3.scatter(xs[n:n+m], ys[n:n+m],marker = "s")
 forest3.scatter(xs[n+m:], ys[n+m:], marker = "D")
+
+# Draw sine-wave
+sample = int(max(xs)) + 20
+sine_x = np.arange(sample, step=2)
+sine_y = 200.0*np.sin(2 * np.pi * sine_x / 400.0)  # y_u = mY * std::sin((2 * PI * t) / mC);  200.0 400.0
+# plt.plot(sine_x, sine_y)
+forest3.scatter(sine_x[0:sample], sine_y[0:sample], s=1, c="black")
+
 
 for i in range(0,len(start_path)):
     tempx = [xs[start_path[i]],xs[end_path[i]]]
@@ -123,21 +110,21 @@ for i in range(0, len(carrier_end_xs)-1):
           head_width=0.1, head_length=0.1)
 
 
-for i in range(0,len(carrier_start_xs)):
-    tempx = carrier_start_xs[i]
-    tempy = carrier_start_ys[i]
-    tempdx = carrier_end_xs[i] - carrier_start_xs[i]
-    tempdy = carrier_end_ys[i] - carrier_start_ys[i]
-    forest3.arrow(tempx,tempy,tempdx,tempdy, color ="black", linestyle = 'dashed',length_includes_head=True,
-          head_width=0.1, head_length=0.1)
-    
-for i in range(0, len(carrier_end_xs)-1):
-    tempx = carrier_end_xs[i]
-    tempy = carrier_end_ys[i]
-    tempdx = carrier_start_xs[i+1] - carrier_end_xs[i]
-    tempdy = carrier_start_ys[i+1] - carrier_end_ys[i]
-    forest3.arrow(tempx,tempy,tempdx,tempdy, color ="black", linestyle = 'dashed',length_includes_head=True,
-          head_width=0.1, head_length=0.1)
+# for i in range(0,len(carrier_start_xs)):
+#     tempx = carrier_start_xs[i]
+#     tempy = carrier_start_ys[i]
+#     tempdx = carrier_end_xs[i] - carrier_start_xs[i]
+#     tempdy = carrier_end_ys[i] - carrier_start_ys[i]
+#     forest3.arrow(tempx,tempy,tempdx,tempdy, color ="black", linestyle = 'dashed',length_includes_head=True,
+#           head_width=0.1, head_length=0.1)
+#
+# for i in range(0, len(carrier_end_xs)-1):
+#     tempx = carrier_end_xs[i]
+#     tempy = carrier_end_ys[i]
+#     tempdx = carrier_start_xs[i+1] - carrier_end_xs[i]
+#     tempdy = carrier_start_ys[i+1] - carrier_end_ys[i]
+#     forest3.arrow(tempx,tempy,tempdx,tempdy, color ="black", linestyle = 'dashed',length_includes_head=True,
+#           head_width=0.1, head_length=0.1)
 
 if(do_animation):        
     carrier_length = []      

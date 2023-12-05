@@ -245,9 +245,11 @@ void PathTSP_LKH::RunAlgorithm(Solution* solution) {
 // Run LKH TSP solver on the give cluster of vertices
 void PathTSP_LKH::runLKH_TSP(Solution* solution, std::vector<Vertex*>* cluster, std::vector<Vertex*>* sub_tour) {
 	// Sanity print
-	printf("Given cluster:\n");
-	for(Vertex* v : *cluster) {
-		printf("%d - type = %d\n", v->nID, v->eVType);
+	if(SANITY_PRINT) {
+		printf("Given cluster:\n");
+		for(Vertex* v : *cluster) {
+			printf("%d - type = %d\n", v->nID, v->eVType);
+		}
 	}
 
 	// Prep stuff
@@ -255,111 +257,121 @@ void PathTSP_LKH::runLKH_TSP(Solution* solution, std::vector<Vertex*>* cluster, 
 	int terminal_index = cluster->size()-2;
 	sub_tour->clear();
 
-	// Create input file for LKH solver
-	solution->PrintLKHData(*cluster);
-
-	if(DEBUG_PTSP_LKH)
-		printf("Running LKH\n");
-	// Run TSP solver on this sub-tour
-	std::system("LKH FixedHPP.par");
-
-	if(DEBUG_PTSP_LKH)
-		printf("Found the following solution:\n");
-
-	// Open file with results
-	std::ifstream file("LKH_output.dat");
-	// Remove the first few lines...
-	std::string line;
-	for(int i = 0; i < 6; i++) {
-		std::getline(file, line);
-	}
-
-	/// Make list of total-tour minus depot and terminal
+	/// List of total-tour minus depot and terminal
 	std::list<int> totalPath;
 
-	// Start parsing the data
-	for(int i = 0; i < cluster->size(); i++) {
-		std::getline(file, line);
-		std::stringstream lineStreamN(line);
-		// Parse the way-point from the line
-		int n;
-		lineStreamN >> n;
-		totalPath.push_back(n-1);
+	bool try_again = true;
+	double multiplier = 100;
+	while(try_again) {
+		// Create input file for LKH solver
+		solution->PrintLKHData(*cluster, multiplier);
+
 		if(DEBUG_PTSP_LKH)
-			printf(" %d", n-1);
-	}
-	if(DEBUG_PTSP_LKH)
-		printf("\n");
+			printf("Running LKH\n");
+		// Run TSP solver on this sub-tour
+		std::system("LKH FixedHPP.par");
 
-	file.close();
+		if(DEBUG_PTSP_LKH)
+			printf("Found the following solution:\n");
 
-	/// Correct the returned list from the LKH solver
-	// Check for weird (easy) edge-cases
-	if((totalPath.front() == depot_index) && (totalPath.back() == terminal_index)) {
-		// Nothing to fix...
-	}
-	else if((totalPath.front() == terminal_index) && (totalPath.back() == depot_index)) {
-		// Easy fix, just reverse the list
-		totalPath.reverse();
-	}
-	else {
-		// Correcting the path will take a little more work...
-		// Scan totalPath to determine the given order
-		bool reverseList = true;
-		{
-			std::list<int>::iterator it = totalPath.begin();
-
-			while((*it != depot_index) && (it != totalPath.end())) {
-				if(*it == terminal_index) {
-					reverseList = false;
-				}
-				it++;
-			}
+		// Open file with results
+		std::ifstream file("LKH_output.dat");
+		// Remove the first few lines...
+		std::string line;
+		for(int i = 0; i < 6; i++) {
+			std::getline(file, line);
 		}
 
-		// Rotate list so that it starts at the closest-to-depot way-point,
-		//  and ends with the closest-to-ideal-stop
-		bool rotate_again = true;
-		while(rotate_again) {
-			if(totalPath.front() == depot_index) {
-				// Total path has been corrected
-				rotate_again = false;
+		/// Make list of total-tour minus depot and terminal
+		totalPath.clear();
+
+		// Start parsing the data
+		for(int i = 0; i < cluster->size(); i++) {
+			std::getline(file, line);
+			std::stringstream lineStreamN(line);
+			// Parse the way-point from the line
+			int n;
+			lineStreamN >> n;
+			totalPath.push_back(n-1);
+			if(DEBUG_PTSP_LKH)
+				printf(" %d", n-1);
+		}
+		if(DEBUG_PTSP_LKH)
+			printf("\n");
+
+		file.close();
+
+		/// Correct the returned list from the LKH solver
+		// Check for weird (easy) edge-cases
+		if((totalPath.front() == depot_index) && (totalPath.back() == terminal_index)) {
+			// Nothing to fix...
+		}
+		else if((totalPath.front() == terminal_index) && (totalPath.back() == depot_index)) {
+			// Easy fix, just reverse the list
+			totalPath.reverse();
+		}
+		else {
+			// Correcting the path will take a little more work...
+			// Scan totalPath to determine the given order
+			bool reverseList = true;
+			{
+				std::list<int>::iterator it = totalPath.begin();
+
+				while((*it != depot_index) && (it != totalPath.end())) {
+					if(*it == terminal_index) {
+						reverseList = false;
+					}
+					it++;
+				}
 			}
-			else {
-				// Keep rotating list
+
+			// Rotate list so that it starts at the closest-to-depot way-point,
+			//  and ends with the closest-to-ideal-stop
+			bool rotate_again = true;
+			while(rotate_again) {
+				if(totalPath.front() == depot_index) {
+					// Total path has been corrected
+					rotate_again = false;
+				}
+				else {
+					// Keep rotating list
+					int temp = totalPath.front();
+					totalPath.pop_front();
+					totalPath.push_back(temp);
+				}
+			}
+
+			if(reverseList) {
+				// We were given the list "backwards", we need to reverse it
 				int temp = totalPath.front();
 				totalPath.pop_front();
 				totalPath.push_back(temp);
+
+				totalPath.reverse();
 			}
 		}
 
-		if(reverseList) {
-			// We were given the list "backwards", we need to reverse it
-			int temp = totalPath.front();
-			totalPath.pop_front();
-			totalPath.push_back(temp);
-
-			totalPath.reverse();
+		// Verify that the list is correct
+		if((totalPath.front() != depot_index) || (totalPath.back() != terminal_index)) {
+			// Something went wrong...
+			try_again = true;
+			multiplier *= 10;
+		}
+		else {
+			// It worked!
+			try_again = false;
 		}
 	}
 
-	// Verify that the list is correct
-	if((totalPath.front() != depot_index) || (totalPath.back() != terminal_index)) {
-		// Something went wrong...
-		fprintf(stderr, "[ERROR] : K_TSP_Shft::RunAlgorithm() : totalPath order is not as expected\n");
+
+	// Sanity print
+	if(DEBUG_PTSP_LKH) {
+		printf("Fixed total path:\n");
 		for(int n : totalPath) {
 			printf(" %d", n);
 		}
-		printf("\n");
-		exit(1);
+		printf("\n\n");
 	}
-
-	// Sanity print
-	printf("Fixed total path:\n");
-	for(int n : totalPath) {
-		printf(" %d", n);
-	}
-	printf("\n\n");
 
 	// Create an ordered vector based on found path
 	for(int n : totalPath) {

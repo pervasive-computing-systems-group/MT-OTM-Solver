@@ -293,25 +293,39 @@ void KMeans_Partitioner::RunAlgorithm(Solution* solution) {
 void KMeans_Partitioner::kMeansClustering(std::vector<KPoint>* points, std::vector<KPoint>* centroids, int epochs) {
 	// The index of the centroid within the centroids vector
 	int n = points->size();
-	int k = (int)centroids->size();
+	int k = centroids->size();
+	bool run_again = true;
+	int iteration = 0;
 
 	// Run clustering iterations
-	for(int i = 0; i < epochs; ++i) {
-		// Check every edge against every centroid
-		for(std::vector<KPoint>::iterator it = points->begin(); it != points->end(); ++it) {
+	while(run_again && iteration < epochs) {
+		run_again = false;
+		iteration++;
+
+		// Check every point against every centroid
+		for(int p = 0; p < n; p++) {
 			// For each centroid, compute distance from the centroid to the point
 			// and update the point's cluster if necessary
-			for(std::vector<KPoint>::iterator c = centroids->begin(); c != centroids->end(); ++c) {
-				// Get centroid id
-				int clusterId = c->cluster;
+			int closest = -1;
+			double min_dist = __DBL_MAX__;
+
+			for(int c = 0; c < k; c++) {
 				// Check to see if this centroid is better than the last centroid
-				KPoint p = *it;
-				double dist = c->distance(p);
-				if(dist < p.minDist) {
-					p.minDist = dist;
-					p.cluster = clusterId;
+				if(points->at(p).distance(centroids->at(c)) < min_dist) {
+					min_dist = points->at(p).distance(centroids->at(c));
+					closest = c;
 				}
-				*it = p;
+			}
+
+			// If not -1, assign point to centroid
+			if(closest == -1) {
+				// Something went wrong...
+				fprintf(stderr,"[ERROR] KMeans_Partitioner::kMeansClustering() : Closest centroid was -1\n");
+				exit(1);
+			}
+			else if(closest != points->at(p).cluster) {
+				points->at(p).cluster = closest;
+				run_again = true;
 			}
 		}
 
@@ -325,6 +339,7 @@ void KMeans_Partitioner::kMeansClustering(std::vector<KPoint>* points, std::vect
 			}
 
 			if(!has_a_stop) {
+				run_again = true;
 				float cent_x = centroids->at(c).x;
 				float cent_y = centroids->at(c).y;
 				int closest = 0;
@@ -354,6 +369,10 @@ void KMeans_Partitioner::kMeansClustering(std::vector<KPoint>* points, std::vect
 		// Iterate over points to append data to centroids
 		for(std::vector<KPoint>::iterator it = points->begin(); it != points->end(); ++it) {
 			int clusterId = it->cluster;
+			if(clusterId < 0 || clusterId >= k) {
+				fprintf(stderr,"[ERROR] KMeans_Partitioner::kMeansClustering() : Bad cluster assignment: %d\n", clusterId);
+				exit(1);
+			}
 			nPoints[clusterId] += 1;
 			sumX[clusterId] += it->x;
 			sumY[clusterId] += it->y;
@@ -363,6 +382,10 @@ void KMeans_Partitioner::kMeansClustering(std::vector<KPoint>* points, std::vect
 		// Compute the new centroids
 		for(std::vector<KPoint>::iterator c = centroids->begin(); c != centroids->end(); ++c) {
 			int clusterId = c->cluster;
+			if(clusterId < 0 || clusterId >= k) {
+				fprintf(stderr,"[ERROR] KMeans_Partitioner::kMeansClustering() : c->cluster is bad..\n");
+				exit(1);
+			}
 			c->x = sumX[clusterId] / nPoints[clusterId];
 			c->y = sumY[clusterId] / nPoints[clusterId];
 		}

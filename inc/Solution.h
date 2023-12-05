@@ -50,7 +50,7 @@ public:
 	// Prints out the data to be used in the TSPLIB file format for the LKH solver
 	void PrintLKHData();
 	// Prints out the data to be used in the TSPLIB file format for the LKH solver for the vertices in lst
-	void PrintLKHData(std::vector<Vertex*> &lst);
+	void PrintLKHData(std::vector<Vertex*> &lst, double multiplier=10000);
 	// Prints out the data to be used in the TSPLIB file format for the LKH solver where the weight between a and b is 0
 	void PrintLKHDataFHPP(int a, int b);
 	// Clears the adjacency matrix (resets all to false) (if adjacency matrix was created)

@@ -23,12 +23,11 @@ void Tree_Cut_LKH_Mv::RunAlgorithm(Solution* solution) {
 	if(SANITY_PRINT)
 		printf("Run Tree-Cutting Algorithm with LKH Heuristic\n\n");
 
-
-	if(solution->m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
-		// The following assumes a linear UGV... hard fail
-		printf("[ERROR] : Tree_Cutting_LKH::RunAlgorithm : Given non-linear UGV, expected linear\n");
-		exit(0);
-	}
+//	if(solution->m_tBSTrajectory.pd_type != E_TrajFuncType::e_StraightLine) {
+//		// The following assumes a linear UGV... hard fail
+//		printf("[ERROR] : Tree_Cut_LKH_Mv::RunAlgorithm : Given non-linear UGV, expected linear\n");
+//		exit(0);
+//	}
 
 	/// Connect base-station and ideal-stop to tree
 	int closestToDepot = 0;

@@ -69,7 +69,8 @@ double runtimeFromDistance(double dist, int m, int numUAVs, E_VelocityFlag veloc
 	int bat_changes = max_num_launches - 1;
 
 	// Sanity print
-	printf("Make %d battery changes\n", bat_changes);
+	if(SANITY_PRINT)
+		printf("Make %d battery changes\n", bat_changes);
 
 	if(bestTime < INF) {
 		bestTime = bestTime * max_num_launches;
@@ -100,7 +101,8 @@ double guessRuntime(std::string filePath, int m, int numUAVs, E_VelocityFlag vel
 		MSF_time = runtimeFromDistance(total_min_dist, m, numUAVs, velocityFlag);
 	}
 
-	printf("Found best possible time of %fs\n", MSF_time);
+	if(SANITY_PRINT)
+		printf("Found best possible time of %fs\n", MSF_time);
 	return MSF_time;
 }
 
@@ -130,13 +132,15 @@ Solution_Multi* iterativePathPlanning(Solver* solver, std::string filePath, int 
 	Solution_Multi* retSolution = NULL;
 
 	// Make t based on guess of completion time
-//	double t = 1000.0;
-	double t = guessRuntime(filePath, m, numUAVs, velocityFlag);
+	Solution tempSol(filePath);
+	double t = 1500/80*tempSol.m_nN;
+//	double t = guessRuntime(filePath, m, numUAVs, velocityFlag);
 
 	// Verify that this configuration is possible
 	if(t >= INF) {
 		// Not feasible, return an unsolved solution
-		printf("Bad choice of M! m = %d (pre-solve)\n", m);
+		if(SANITY_PRINT)
+			printf("Bad choice of M! m = %d (pre-solve)\n", m);
 		retSolution =  new Solution_Multi(filePath, m, numUAVs, 500);
 		retSolution->m_bFeasible = false;
 	}
@@ -176,6 +180,9 @@ Solution_Multi* iterativePathPlanning(Solver* solver, std::string filePath, int 
 			A = new double[m];
 			for(int i = 0; i < retSolution->m_nM; i++) {
 				A[i] = retSolution->GetSubtourTime(i);
+				if(A[i] > INF) {
+					t = A[i];
+				}
 			}
 
 			if(SANITY_PRINT) {
@@ -217,8 +224,10 @@ Solution_Multi* iterativePathPlanning(Solver* solver, std::string filePath, int 
 			}
 		} while(run);
 
-		printf("(Maybe) Found consistent solution!\n t-error: %f, A-error: %f\nCorrecting error...\n", time_error, A_error);
-		printf(" Found time %f\n", retSolution->TimeToRunMultiSolution());
+		if(SANITY_PRINT) {
+			printf("(Maybe) Found consistent solution!\n t-error: %f, A-error: %f\nCorrecting error...\n", time_error, A_error);
+			printf(" Found time %f\n", retSolution->TimeToRunMultiSolution());
+		}
 		retSolution->CorrectSolution(velocityFlag);
 	}
 
@@ -273,7 +282,8 @@ int main(int argc, char** argv) {
 		exit(0);
 	}
 
-	printf("\n\n** Running Min-Time OTM algorithm with approach %d with %d UAVs**\n\n", algApproach, numUAVs);
+	if(SANITY_PRINT)
+		printf("\n\n** Running Min-Time OTM algorithm with approach %d with %d UAVs**\n\n", algApproach, numUAVs);
 
 	Solver* solver;
 
@@ -327,7 +337,8 @@ int main(int argc, char** argv) {
 		// Update m
 		m += 1;
 
-		printf("\nRunning Multi-OTM solver with m = %d\n", m);
+		if(SANITY_PRINT)
+			printf("\nRunning Multi-OTM solver with m = %d\n", m);
 		// Solve path-planning
 		Solution_Multi* solution = iterativePathPlanning(solver, filePath, m, numUAVs, velocity_flag);
 
@@ -335,7 +346,8 @@ int main(int argc, char** argv) {
 		double t_tot = solution->TimeToRunMultiSolution();
 
 		// Sanity print
-		printf("With m = %d, Total time = %f\n\n", m, t_tot);
+		if(SANITY_PRINT)
+			printf("With m = %d, Total time = %f\n\n", m, t_tot);
 
 		// Run again?
 		if(m == solution->m_nN) {
@@ -357,12 +369,13 @@ int main(int argc, char** argv) {
 		}
 		else if(t_best < INF-1) {
 			// We are no longer improving by increasing m
-			printf("M is too large! (m = %d, best-time = %f)\n Have better solution, stopping algorithm...\n", m, t_best);
+			if(SANITY_PRINT)
+				printf("M is too large! (m = %d, best-time = %f)\n Have better solution, stopping algorithm...\n", m, t_best);
 			delete solution;
 			run = false;
 		}
 
-	} while(run && m <= 6);
+	} while(run && m <= 15);
 
 	// Capture end time
 	auto stop = std::chrono::high_resolution_clock::now();
@@ -372,9 +385,11 @@ int main(int argc, char** argv) {
 
 	// 3. return best-found-P, t_tot
 	bestSolution->PrintSolution();
-	bestSolution->PrintGraph();
+	if(SANITY_PRINT)
+		bestSolution->PrintGraph();
 
-	printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
+	if(SANITY_PRINT)
+		printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
 	double duration_s = (double)duration/1000.0;
 
 	if(printData) {

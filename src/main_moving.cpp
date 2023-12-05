@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
 			run = false;
 		}
 
-	} while(run);
+	} while(run && m <= 15);
 
 	// Capture end time
 	auto stop = std::chrono::high_resolution_clock::now();
