@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -e
+echo "Running Min-Time OTM Experiment IX"
+
+for i in 5 10 15 20 25 30 35 40 45 50 55 60 65 70 75 80 85 90 95 100
+do
+    for j in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49
+    do 
+        echo "Running k-IP algorithm on plot_${i}_$j"
+        ../build/mt-otm-solver 2 1 "Test_Set_IX/plot_${i}_$j.txt" 1 "Test_Set_IX" > Test_Set_IX/run_output.txt &
+        wait
+        echo "Running k-TSP algorithm on plot_${i}_$j"
+        ../build/mt-otm-solver 4 1 "Test_Set_IX/plot_${i}_$j.txt" 1 "Test_Set_IX" > Test_Set_IX/run_output.txt &
+        wait
+        echo "Running Dynamic-Tree-Cutting algorithm on plot_${i}_$j"
+        ../build/tree-solve 4 "Test_Set_IX/plot_${i}_$j.txt" 1 "Test_Set_IX" > Test_Set_IX/run_output.txt &
+        wait
+        echo "Running Moving Solver algorithm on plot_${i}_$j"
+        ../build/moving-solver 2 "Test_Set_IX/plot_${i}_$j.txt" 1 "Test_Set_IX" > Test_Set_IX/run_output.txt &
+        wait
+        echo "Running Moving-Shifting Solver algorithm on plot_${i}_$j"
+        ../build/moving-solver 3 "Test_Set_IX/plot_${i}_$j.txt" 1 "Test_Set_IX" > Test_Set_IX/run_output.txt &
+        wait
+    done
+done
+
+
