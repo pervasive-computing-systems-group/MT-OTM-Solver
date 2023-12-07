@@ -47,7 +47,7 @@ struct KMPoint {
 
 class K_TSP_Shft : public Hybrid_Planner {
 public:
-	K_TSP_Shft();
+	K_TSP_Shft(E_VelocityFlag spdFlag=E_VelocityFlag::e_NotFixed);
 	virtual ~K_TSP_Shft();
 
 protected:
@@ -66,4 +66,7 @@ private:
 	 * desired_times while constrained by tour_times.
 	 */
 	void solveStartTimesQP(std::vector<double>* tour_times, std::vector<double>* desired_times, std::vector<double>* selected_times);
+
+	// Used for comparing against moving problems
+	E_VelocityFlag speedFlag;
 };

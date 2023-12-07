@@ -1827,7 +1827,7 @@ double Solution::GetMaxVelocity(double dist, E_VelocityFlag velocityFlag) {
 		return V_OPT;
 	}
 	else if(velocityFlag == e_FixedPowMin) {
-		return V_OPT;
+		return V_POW_MIN;
 	}
 	else if(velocityFlag == e_NotFixed) {
 		if(dist <= DIST_OPT) {

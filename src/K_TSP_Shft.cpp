@@ -1,8 +1,9 @@
 #include "K_TSP_Shft.h"
 
-K_TSP_Shft::K_TSP_Shft() {
+K_TSP_Shft::K_TSP_Shft(E_VelocityFlag spdFlag) {
 	srand(time(NULL));
 //	srand(1);
+	speedFlag = spdFlag;
 }
 
 K_TSP_Shft::~K_TSP_Shft() {
@@ -372,15 +373,9 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 						// Just return to avoid breaking things...
 						return;
 					}
-					else if(dist <= DIST_OPT) {
-						// Fly at max speed
-						new_time = dist * (1.0/V_MAX);
-						if(DEBUG_K_TSP_SHFT)
-							printf("   go V_MAX = %f, t = %f\n", V_MAX, new_time);
-					}
 					else {
 						// Determine fastest speed to move through this leg
-						double v = solution->GetMaxVelocity(dist);
+						double v = solution->GetMaxVelocity(dist, speedFlag);
 
 						new_time = dist/v;
 
@@ -573,15 +568,9 @@ void K_TSP_Shft::RunAlgorithm(Solution* solution) {
 						// Just return to avoid breaking things...
 						return;
 					}
-					else if(dist <= DIST_OPT) {
-						// Fly at max speed
-						new_time = dist * (1.0/V_MAX);
-						if(DEBUG_K_TSP_SHFT)
-							printf("   go V_MAX = %f, t = %f\n", V_MAX, new_time);
-					}
 					else {
 						// Determine fastest speed to move through this leg
-						double v = solution->GetMaxVelocity(dist);
+						double v = solution->GetMaxVelocity(dist, speedFlag);
 
 						new_time = dist/v;
 
@@ -848,104 +837,109 @@ void K_TSP_Shft::runLKH_TSP(Solution* solution, std::vector<Vertex*>* cluster, s
 	int depot_index = cluster->size()-2;
 	int terminal_index = cluster->size()-1;
 	sub_tour->clear();
-
-	// Create input file for LKH solver
-	solution->PrintLKHData(*cluster);
-
-	if(DEBUG_K_TSP_SHFT)
-		printf("Running LKH\n");
-	// Run TSP solver on this sub-tour
-	std::system("LKH FixedHPP.par");
-
-//	if(DEBUG_K_TSP_SHFT)
-//		printf("Found the following solution:\n");
-
-	// Open file with results
-	std::ifstream file("LKH_output.dat");
-	// Remove the first few lines...
-	std::string line;
-	for(int i = 0; i < 6; i++) {
-		std::getline(file, line);
-	}
-
-	/// Make list of total-tour minus depot and terminal
 	std::list<int> totalPath;
 
-	// Start parsing the data
-	for(int i = 0; i < cluster->size(); i++) {
-		std::getline(file, line);
-		std::stringstream lineStreamN(line);
-		// Parse the way-point from the line
-		int n;
-		lineStreamN >> n;
-		totalPath.push_back(n-1);
-//		if(DEBUG_K_TSP_SHFT)
-//			printf(" %d", n-1);
-	}
-//	if(DEBUG_K_TSP_SHFT)
-//		printf("\n");
 
-	file.close();
+	bool try_again = true;
+	double multiplier = 100;
+	while(try_again) {
+		// Remove any lingering files...
+		std::system("rm LKH_output.dat");
 
-	/// Correct the returned list from the LKH solver
-	// Check for weird (easy) edge-cases
-	if((totalPath.front() == depot_index) && (totalPath.back() == terminal_index)) {
-		// Nothing to fix...
-	}
-	else if((totalPath.front() == terminal_index) && (totalPath.back() == depot_index)) {
-		// Easy fix, just reverse the list
-		totalPath.reverse();
-	}
-	else {
-		// Correcting the path will take a little more work...
-		// Scan totalPath to determine the given order
-		bool reverseList = true;
-		{
-			std::list<int>::iterator it = totalPath.begin();
+		// Create input file for LKH solver
+		solution->PrintLKHData(*cluster, multiplier);
 
-			while((*it != depot_index) && (it != totalPath.end())) {
-				if(*it == terminal_index) {
-					reverseList = false;
-				}
-				it++;
-			}
+		if(DEBUG_K_TSP_SHFT)
+			printf("Running LKH\n");
+		// Run TSP solver on this sub-tour
+		std::system("LKH FixedHPP.par");
+
+		// Open file with results
+		std::ifstream file("LKH_output.dat");
+		// Remove the first few lines...
+		std::string line;
+		for(int i = 0; i < 6; i++) {
+			std::getline(file, line);
 		}
 
-		// Rotate list so that it starts at the closest-to-depot way-point,
-		//  and ends with the closest-to-ideal-stop
-		bool rotate_again = true;
-		while(rotate_again) {
-			if(totalPath.front() == depot_index) {
-				// Total path has been corrected
-				rotate_again = false;
+		// Clear list of total-tour minus depot and terminal
+		totalPath.clear();
+
+		// Start parsing the data
+		for(int i = 0; i < cluster->size(); i++) {
+			std::getline(file, line);
+			std::stringstream lineStreamN(line);
+			// Parse the way-point from the line
+			int n;
+			lineStreamN >> n;
+			totalPath.push_back(n-1);
+		}
+		file.close();
+
+		/// Correct the returned list from the LKH solver
+		// Check for weird (easy) edge-cases
+		if((totalPath.front() == depot_index) && (totalPath.back() == terminal_index)) {
+			// Nothing to fix...
+		}
+		else if((totalPath.front() == terminal_index) && (totalPath.back() == depot_index)) {
+			// Easy fix, just reverse the list
+			totalPath.reverse();
+		}
+		else {
+			// Correcting the path will take a little more work...
+			// Scan totalPath to determine the given order
+			bool reverseList = true;
+			{
+				std::list<int>::iterator it = totalPath.begin();
+
+				while((*it != depot_index) && (it != totalPath.end())) {
+					if(*it == terminal_index) {
+						reverseList = false;
+					}
+					it++;
+				}
 			}
-			else {
-				// Keep rotating list
+
+			// Rotate list so that it starts at the closest-to-depot way-point,
+			//  and ends with the closest-to-ideal-stop
+			bool rotate_again = true;
+			while(rotate_again) {
+				if(totalPath.front() == depot_index) {
+					// Total path has been corrected
+					rotate_again = false;
+				}
+				else {
+					// Keep rotating list
+					int temp = totalPath.front();
+					totalPath.pop_front();
+					totalPath.push_back(temp);
+				}
+			}
+
+			if(reverseList) {
+				// We were given the list "backwards", we need to reverse it
 				int temp = totalPath.front();
 				totalPath.pop_front();
 				totalPath.push_back(temp);
+
+				totalPath.reverse();
 			}
 		}
 
-		if(reverseList) {
-			// We were given the list "backwards", we need to reverse it
-			int temp = totalPath.front();
-			totalPath.pop_front();
-			totalPath.push_back(temp);
+		// Verify that the list is correct
+		if((totalPath.front() != depot_index) || (totalPath.back() != terminal_index)) {
+			// Something went wrong...
+			try_again = true;
+			multiplier *= 10;
 
-			totalPath.reverse();
+			if(DEBUG_K_TSP_SHFT)
+				printf(" Not aggressive enough... try running again\n");
 		}
-	}
-
-	// Verify that the list is correct
-	if((totalPath.front() != depot_index) || (totalPath.back() != terminal_index)) {
-		// Something went wrong...
-		fprintf(stderr, "[ERROR] : K_TSP_Shft::RunAlgorithm() : totalPath order is not as expected\n");
-		for(int n : totalPath) {
-			printf(" %d", n);
+		else {
+			if(DEBUG_K_TSP_SHFT)
+				printf(" Found a solution\n");
+			try_again = false;
 		}
-		printf("\n");
-		exit(1);
 	}
 
 	// Sanity print

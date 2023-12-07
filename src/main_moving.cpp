@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 
 	MMdMtHPP_NLP moveGV_NLP;
 	K_TSP kTSP;
-	K_TSP_Shft kTSPshft;
+	K_TSP_Shft kTSPshft(velocity_flag);
 
 	// Create a solver object, which performs step 1 and 2.3/2.4
 	switch(algApproach) {
