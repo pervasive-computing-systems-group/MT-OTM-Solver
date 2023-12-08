@@ -133,8 +133,20 @@ Solution_Multi* iterativePathPlanning(Solver* solver, std::string filePath, int 
 
 	// Make t based on guess of completion time
 	Solution tempSol(filePath);
-	double t = 1500/80*tempSol.m_nN;
-//	double t = guessRuntime(filePath, m, numUAVs, velocityFlag);
+	double t_guess = guessRuntime(filePath, m, numUAVs, velocityFlag);
+	double t_avrg = t_guess;
+	if(tempSol.m_tBSTrajectory.pd_type == E_TrajFuncType::e_StraightLine) {
+		t_avrg = 1500/80*tempSol.m_nN;
+	}
+	else if(tempSol.m_tBSTrajectory.pd_type == E_TrajFuncType::e_Sinusoidal) {
+		t_avrg = 390/95*tempSol.m_nN;
+	}
+
+//	double t_avrg = 1500/80*tempSol.m_nN;
+//	double t_avrg = 390/95*tempSol.m_nN;
+//	double t_guess = guessRuntime(filePath, m, numUAVs, velocityFlag);
+
+	double t = (t_avrg + t_guess)/2.0;
 
 	// Verify that this configuration is possible
 	if(t >= INF) {
@@ -385,11 +397,15 @@ int main(int argc, char** argv) {
 
 	// 3. return best-found-P, t_tot
 	bestSolution->PrintSolution();
-	if(SANITY_PRINT)
-		bestSolution->PrintGraph();
 
-	if(SANITY_PRINT)
+	if(SANITY_PRINT) {
+		bestSolution->PrintGraph();
 		printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
+		for(int i = 0; i < bestSolution->m_nM; i++) {
+			printf(" Partition %d dist = %f\n", i, bestSolution->DistanceOfPartition(i));
+		}
+	}
+
 	double duration_s = (double)duration/1000.0;
 
 	if(printData) {

@@ -166,6 +166,9 @@ int main(int argc, char** argv) {
 	if(SANITY_PRINT) {
 		bestSolution->PrintGraph();
 		printf("\nBest Found Solution:\n Time: %f\n m: %d\n Comp. Time: %lldms\n", t_best, bestSolution->m_nM, duration);
+		for(int i = 0; i < bestSolution->m_nM; i++) {
+			printf(" Partition %d dist = %f\n", i, bestSolution->DistanceOfPartition(i));
+		}
 	}
 
 	double duration_s = (double)duration/1000.0;

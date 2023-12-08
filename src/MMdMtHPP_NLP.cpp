@@ -89,6 +89,11 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 	GRBVar* Zr_d_k = new GRBVar[M];
 	GRBVar* Zr_t_k = new GRBVar[M];
 
+	// Auxiliary variables used to constrain speed by distance
+	GRBVar* MaxS_k = new GRBVar[M];
+	GRBVar* alpha_k = new GRBVar[M];
+	GRBVar* betta_k = new GRBVar[M];
+
 
 	try {
 		// Create Gurobi environment
@@ -178,6 +183,12 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 			Yt_k[k] = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0, GRB_CONTINUOUS, "Yt_" + itos(k));
 		}
 
+		// Create speed aux variables and alpha_k, betta_k
+		for(int k = 0; k < M; k++) {
+			MaxS_k[k] = model.addVar(0, GRB_INFINITY, 0, GRB_CONTINUOUS, "MaxS_" + itos(k));
+			alpha_k[k] = model.addVar(0, 1, 0, GRB_BINARY, "alpha_" + itos(k));
+			betta_k[k] = model.addVar(0, 1, 0, GRB_BINARY, "alpha_" + itos(k));
+		}
 
 		/// Objective function
 		GRBQuadExpr ObjExpr = Tt_k[M-1];
@@ -351,8 +362,29 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 
 		// Bound on S_k
 		for(int k = 0; k < M; k++) {
-			GRBQuadExpr expr = S_k[k]*S_k[k] - 2*C4*S_k[k] + (C2/pow(C3,2))*L_k[k] + pow(C4,2) - (C1/pow(C3,2));
-			model.addQConstr(expr <= 0, "V_"+itos(k)+"_leq_v(d_"+itos(k)+")");
+			/// v(d) = sqrt(36791437195 − 10557000 d) / 10557 + 129221 / 10557
+			// TODO: determine why the solver doesn't handle these constraints very well...
+//			GRBQuadExpr expr = S_k[k]*S_k[k] - 2*C4*S_k[k] + (C2/pow(C3,2))*L_k[k] + pow(C4,2) - (C1/pow(C3,2));
+//			model.addQConstr(expr <= 0, "V_"+itos(k)+"_leq_v(d_"+itos(k)+")");
+
+			// Determine max speed by function
+			GRBQuadExpr exprMaxS = MaxS_k[k]*MaxS_k[k] - 2*C4*MaxS_k[k] + pow(C4,2) + (C2/pow(C3,2))*L_k[k] - (C1/pow(C3,2));
+			model.addQConstr(exprMaxS <= 0, "V_"+itos(k)+"_leq_v(d_"+itos(k)+")");
+
+			// Are we under the optimal distance?
+			GRBQuadExpr exprAlpha = (L_k[k] - DIST_OPT)* alpha_k[k];
+			model.addQConstr(exprAlpha <= 0, "Use_a_"+itos(k));
+			GRBQuadExpr exprBetta = (DIST_OPT - L_k[k])* betta_k[k];
+			model.addQConstr(exprBetta <= 0, "Use_b_"+itos(k));
+
+			// alpha or betta, not both
+			model.addGenConstrIndicator(alpha_k[k], 0, betta_k[k], GRB_EQUAL, 1);
+			model.addGenConstrIndicator(betta_k[k], 0, alpha_k[k], GRB_EQUAL, 1);
+
+			// If alpha < dist_v-max -> S_k = v_max
+			model.addGenConstrIndicator(alpha_k[k], 1, S_k[k], GRB_EQUAL, V_MAX);
+			// If betta -> S_k <= MaxS
+			model.addGenConstrIndicator(betta_k[k], 1, S_k[k]-MaxS_k[k], GRB_LESS_EQUAL, 0);
 		}
 
 		// Enforce number sequencing (lower bound)
@@ -461,92 +493,113 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 //		model.set(GRB_INT_PAR_RLTCUTS, "2");
 //		model.set(GRB_INT_PAR_FLOWCOVERCUTS, "2");
 
+		// Run for at most 20 minutes
+		model.set(GRB_DoubleParam_TimeLimit, 1200);
 
 		/// Run model
 		model.optimize();
 
+		// Did we time-out before closing the gap?
+		if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
+			/// Extract solution
+			if (model.get(GRB_IntAttr_SolCount) > 0) {
+				// Reset the solution
+				solution->m_Td_k.clear();
+				solution->m_Tt_k.clear();
 
-		/// Extract solution
-		if (model.get(GRB_IntAttr_SolCount) > 0) {
-			// Reset the solution
-			solution->m_Td_k.clear();
-			solution->m_Tt_k.clear();
+				// Create arrays of doubles to collect results
+				double*** Eijk_sol = new double**[N];
+				double** Dd_ki_sol = new double*[M];
+				double** Dt_jk_sol = new double*[N];
+				double* Ui_sol = new double[N];
+				double* Lk_sol = new double[M];
+				double* Sk_sol = new double[M];
+				double* Td_k_sol = new double[M];
+				double* Tt_k_sol = new double[M];
+				double** Ld_ki_sol = new double*[M];
+				double** Lt_jk_sol = new double*[N];
+				double* Xd_k_sol = new double[M];
+				double* Yd_k_sol = new double[M];
+				double* Xt_k_sol = new double[M];
+				double* Yt_k_sol = new double[M];
 
-			// Create arrays of doubles to collect results
-			double*** Eijk_sol = new double**[N];
-			double** Dd_ki_sol = new double*[M];
-			double** Dt_jk_sol = new double*[N];
-			double* Ui_sol = new double[N];
-			double* Lk_sol = new double[M];
-			double* Sk_sol = new double[M];
-			double* Td_k_sol = new double[M];
-			double* Tt_k_sol = new double[M];
-			double** Ld_ki_sol = new double*[M];
-			double** Lt_jk_sol = new double*[N];
-			double* Xd_k_sol = new double[M];
-			double* Yd_k_sol = new double[M];
-			double* Xt_k_sol = new double[M];
-			double* Yt_k_sol = new double[M];
-
-			// Extract the results from the solver
-			for(int i = 0; i < N; i++) {
-				Eijk_sol[i] = new double*[N];
-				for(int j = 0; j < N; j++) {
-					Eijk_sol[i][j] = model.get(GRB_DoubleAttr_X, E_ijk[i][j], M);
-				}
-			}
-			for(int k = 0; k < M; k++) {
-				Dd_ki_sol[k] = model.get(GRB_DoubleAttr_X, Dd_ki[k], N);
-			}
-			for(int j = 0; j < N; j++) {
-				Dt_jk_sol[j] = model.get(GRB_DoubleAttr_X, Dt_jk[j], M);
-			}
-			Ui_sol = model.get(GRB_DoubleAttr_X, U_i, N);
-			Lk_sol = model.get(GRB_DoubleAttr_X, L_k, M);
-			Sk_sol = model.get(GRB_DoubleAttr_X, S_k, M);
-			Td_k_sol = model.get(GRB_DoubleAttr_X, Td_k, M);
-			Tt_k_sol = model.get(GRB_DoubleAttr_X, Tt_k, M);
-			for(int k = 0; k < M; k++) {
-				Ld_ki_sol[k] = model.get(GRB_DoubleAttr_X, Ld_ki[k], N);
-			}
-			for(int k = 0; k < M; k++) {
-				Lt_jk_sol[k] = model.get(GRB_DoubleAttr_X, Ld_ki[k], N);
-			}
-			Xd_k_sol = model.get(GRB_DoubleAttr_X, Xd_k, M);
-			Yd_k_sol = model.get(GRB_DoubleAttr_X, Yd_k, M);
-			Xt_k_sol = model.get(GRB_DoubleAttr_X, Xt_k, M);
-			Yt_k_sol = model.get(GRB_DoubleAttr_X, Yt_k, M);
-
-
-			// Print results
-			for(int k = 0; k < M; k++) {
-				double dist = 0;
-
-				if(DEBUG_MUGV_NLP) {
-					printf(" Xd_%d,Yd_%d = (%0.3f,%0.3f)\n",k,k,Xd_k_sol[k],Yd_k_sol[k]);
-					printf(" Xt_%d,Yt_%d = (%0.3f,%0.3f)\n",k,k,Xt_k_sol[k],Yt_k_sol[k]);
-					printf(" Td_%d,Tt_%d = (%0.3f,%0.3f)\n",k,k,Td_k_sol[k],Tt_k_sol[k]);
-					printf(" calc-dist = %0.3f, L_%d = %0.3f\n", dist, k, Lk_sol[k]);
-				}
-
-				// We solved for the times and depot locations... store those
-				solution->m_Td_k.push_back(Td_k_sol[k]);
-				solution->m_Tt_k.push_back(Tt_k_sol[k]);
-				solution->GetDepotOfPartion(k)->fX = Xd_k_sol[k];
-				solution->GetDepotOfPartion(k)->fY = Yd_k_sol[k];
-				solution->GetTerminalOfPartion(k)->fX = Xt_k_sol[k];
-				solution->GetTerminalOfPartion(k)->fY = Yt_k_sol[k];
-
+				// Extract the results from the solver
 				for(int i = 0; i < N; i++) {
+					Eijk_sol[i] = new double*[N];
 					for(int j = 0; j < N; j++) {
-						if(Eijk_sol[i][j][k] > 0.5) {
+						Eijk_sol[i][j] = model.get(GRB_DoubleAttr_X, E_ijk[i][j], M);
+					}
+				}
+				for(int k = 0; k < M; k++) {
+					Dd_ki_sol[k] = model.get(GRB_DoubleAttr_X, Dd_ki[k], N);
+				}
+				for(int j = 0; j < N; j++) {
+					Dt_jk_sol[j] = model.get(GRB_DoubleAttr_X, Dt_jk[j], M);
+				}
+				Ui_sol = model.get(GRB_DoubleAttr_X, U_i, N);
+				Lk_sol = model.get(GRB_DoubleAttr_X, L_k, M);
+				Sk_sol = model.get(GRB_DoubleAttr_X, S_k, M);
+				Td_k_sol = model.get(GRB_DoubleAttr_X, Td_k, M);
+				Tt_k_sol = model.get(GRB_DoubleAttr_X, Tt_k, M);
+				for(int k = 0; k < M; k++) {
+					Ld_ki_sol[k] = model.get(GRB_DoubleAttr_X, Ld_ki[k], N);
+				}
+				for(int k = 0; k < M; k++) {
+					Lt_jk_sol[k] = model.get(GRB_DoubleAttr_X, Ld_ki[k], N);
+				}
+				Xd_k_sol = model.get(GRB_DoubleAttr_X, Xd_k, M);
+				Yd_k_sol = model.get(GRB_DoubleAttr_X, Yd_k, M);
+				Xt_k_sol = model.get(GRB_DoubleAttr_X, Xt_k, M);
+				Yt_k_sol = model.get(GRB_DoubleAttr_X, Yt_k, M);
+
+
+				// Print results
+				for(int k = 0; k < M; k++) {
+					double dist = 0;
+
+					if(DEBUG_MUGV_NLP) {
+						printf(" Xd_%d,Yd_%d = (%0.3f,%0.3f)\n",k,k,Xd_k_sol[k],Yd_k_sol[k]);
+						printf(" Xt_%d,Yt_%d = (%0.3f,%0.3f)\n",k,k,Xt_k_sol[k],Yt_k_sol[k]);
+						printf(" Td_%d,Tt_%d = (%0.3f,%0.3f)\n",k,k,Td_k_sol[k],Tt_k_sol[k]);
+						printf(" calc-dist = %0.3f, L_%d = %0.3f\n", dist, k, Lk_sol[k]);
+					}
+
+					// We solved for the times and depot locations... store those
+					solution->m_Td_k.push_back(Td_k_sol[k]);
+					solution->m_Tt_k.push_back(Tt_k_sol[k]);
+					solution->GetDepotOfPartion(k)->fX = Xd_k_sol[k];
+					solution->GetDepotOfPartion(k)->fY = Yd_k_sol[k];
+					solution->GetTerminalOfPartion(k)->fX = Xt_k_sol[k];
+					solution->GetTerminalOfPartion(k)->fY = Yt_k_sol[k];
+
+					for(int i = 0; i < N; i++) {
+						for(int j = 0; j < N; j++) {
+							if(Eijk_sol[i][j][k] > 0.5) {
+								if(DEBUG_MUGV_NLP)
+									printf(" %d: %d -> %d\n", k, i, j);
+								dist += solution->m_pVertexData[i].GetDistanceTo(solution->m_pVertexData + j);
+
+								// Added edge to solution
+								int a = i;
+								int b = j;
+								if(a < b) {
+									solution->m_pAdjMatrix[a][b] = true;
+								}
+								else {
+									solution->m_pAdjMatrix[b][a] = true;
+								}
+							}
+						}
+					}
+					for(int i = 0; i < N; i++) {
+						if(Dd_ki_sol[k][i] > 0.5) {
 							if(DEBUG_MUGV_NLP)
-								printf(" %d: %d -> %d\n", k, i, j);
-							dist += solution->m_pVertexData[i].GetDistanceTo(solution->m_pVertexData + j);
+								printf(" %d: %d -> %d\n", k, N + M + k, i);
+							dist += solution->GetDepotOfPartion(k)->GetDistanceTo(solution->m_pVertexData + i);
 
 							// Added edge to solution
 							int a = i;
-							int b = j;
+							int b = solution->GetDepotOfPartion(k)->nID;
 							if(a < b) {
 								solution->m_pAdjMatrix[a][b] = true;
 							}
@@ -555,75 +608,63 @@ void MMdMtHPP_NLP::RunAlgorithm(Solution* solution) {
 							}
 						}
 					}
-				}
-				for(int i = 0; i < N; i++) {
-					if(Dd_ki_sol[k][i] > 0.5) {
-						if(DEBUG_MUGV_NLP)
-							printf(" %d: %d -> %d\n", k, N + M + k, i);
-						dist += solution->GetDepotOfPartion(k)->GetDistanceTo(solution->m_pVertexData + i);
+					for(int i = 0; i < N; i++) {
+						if(Dt_jk_sol[i][k] > 0.5) {
+							if(DEBUG_MUGV_NLP)
+								printf(" %d: %d -> %d\n", k, i, N + k);
+							dist += solution->m_pVertexData[i].GetDistanceTo(solution->GetTerminalOfPartion(k));
 
-						// Added edge to solution
-						int a = i;
-						int b = solution->GetDepotOfPartion(k)->nID;
-						if(a < b) {
-							solution->m_pAdjMatrix[a][b] = true;
-						}
-						else {
-							solution->m_pAdjMatrix[b][a] = true;
+							// Added edge to solution
+							int a = i;
+							int b = solution->GetTerminalOfPartion(k)->nID;
+							if(a < b) {
+								solution->m_pAdjMatrix[a][b] = true;
+							}
+							else {
+								solution->m_pAdjMatrix[b][a] = true;
+							}
 						}
 					}
-				}
-				for(int i = 0; i < N; i++) {
-					if(Dt_jk_sol[i][k] > 0.5) {
-						if(DEBUG_MUGV_NLP)
-							printf(" %d: %d -> %d\n", k, i, N + k);
-						dist += solution->m_pVertexData[i].GetDistanceTo(solution->GetTerminalOfPartion(k));
 
-						// Added edge to solution
-						int a = i;
-						int b = solution->GetTerminalOfPartion(k)->nID;
-						if(a < b) {
-							solution->m_pAdjMatrix[a][b] = true;
-						}
-						else {
-							solution->m_pAdjMatrix[b][a] = true;
-						}
+				}
+
+				if(DEBUG_MUGV_NLP) {
+					printf("\nU:\n");
+					for(int i = 0; i < N; i++) {
+						printf(" %d: %.0f\n", i, Ui_sol[i]);
+					}
+
+					printf("\nTour lengths and Velocities:\n");
+					for(int k = 0; k < M; k++) {
+						printf(" %d: L_k:%.3f, V_k:%.3f\n", k, Lk_sol[k], Sk_sol[k]);
 					}
 				}
 
-			}
-
-			if(DEBUG_MUGV_NLP) {
-				printf("\nU:\n");
+				// Clean-up memory
 				for(int i = 0; i < N; i++) {
-					printf(" %d: %.0f\n", i, Ui_sol[i]);
+					for(int j = 0; j < N; j++) {
+						delete[] Eijk_sol[i][j];
+					}
+					delete[] Eijk_sol[i];
+					delete[] Dt_jk_sol[i];
 				}
-
-				printf("\nTour lengths and Velocities:\n");
 				for(int k = 0; k < M; k++) {
-					printf(" %d: L_k:%.3f, V_k:%.3f\n", k, Lk_sol[k], Sk_sol[k]);
+					delete[] Dd_ki_sol[k];
 				}
+				delete[] Eijk_sol;
+				delete[] Dd_ki_sol;
+				delete[] Dt_jk_sol;
+				delete[] Ui_sol;
+				delete[] Lk_sol;
+				delete[] Sk_sol;
 			}
-
-			// Clean-up memory
-			for(int i = 0; i < N; i++) {
-				for(int j = 0; j < N; j++) {
-					delete[] Eijk_sol[i][j];
-				}
-				delete[] Eijk_sol[i];
-				delete[] Dt_jk_sol[i];
+			else {
+				// Found to be infeasible
+				solution->m_bFeasible = false;
 			}
-			for(int k = 0; k < M; k++) {
-				delete[] Dd_ki_sol[k];
-			}
-			delete[] Eijk_sol;
-			delete[] Dd_ki_sol;
-			delete[] Dt_jk_sol;
-			delete[] Ui_sol;
-			delete[] Lk_sol;
-			delete[] Sk_sol;
 		}
 		else {
+			// Failed to solve in time-limit
 			solution->m_bFeasible = false;
 		}
 
