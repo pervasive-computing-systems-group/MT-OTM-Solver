@@ -85,15 +85,25 @@ FIXED_PLOT_MIN_POINTS = 60
 # LOWER_Y_LIMIT = -500
 # STEP_SIZE = 120
 
-# Test-set Test_Set_X
-FILE_PATH = "Test_Set_X/"
-FUNCTION_TYPE = 0  # sine wave
-VELOCITY_FIXED = 1.5
-UPPER_X_LIMIT = 2120
+# # Test-set Test_Set_X
+# FILE_PATH = "Test_Set_X/"
+# FUNCTION_TYPE = 0  # sine wave
+# VELOCITY_FIXED = 1.5
+# UPPER_X_LIMIT = 2120
+# LOWER_X_LIMIT = 2000
+# UPPER_Y_LIMIT = 500
+# LOWER_Y_LIMIT = -500
+# STEP_SIZE = 120
+
+# Test-set Test_Set_VII
+FILE_PATH = "Test_Set_XI/"
+FUNCTION_TYPE = 1  # sine wave
+VELOCITY_FIXED = 2.5
+UPPER_X_LIMIT = 2050
 LOWER_X_LIMIT = 2000
-UPPER_Y_LIMIT = 500
-LOWER_Y_LIMIT = -500
-STEP_SIZE = 120
+UPPER_Y_LIMIT = 200
+LOWER_Y_LIMIT = -200
+STEP_SIZE = 10
 
 
 def rand_plot(num_points, file):
@@ -134,8 +144,8 @@ def main(num_plots, num_points):
 
 if __name__ == '__main__':
     for x in range(30):
-        n = 5 + 5*x
-        # n = 3 + x
+        # n = 5 + 5*x
+        n = 3 + x
         UPPER_X_LIMIT += STEP_SIZE
         print(n, UPPER_X_LIMIT)
         main(NUM_PLOTS, n)
