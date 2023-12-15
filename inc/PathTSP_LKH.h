@@ -14,6 +14,7 @@
 #include <cmath>
 #include <sstream>
 #include <vector>
+#include <cfloat>
 
 #include "Path_Planner.h"
 #include "gurobi_c++.h"

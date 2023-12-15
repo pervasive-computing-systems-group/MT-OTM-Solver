@@ -354,8 +354,15 @@ void PathTSP_LKH::runLKH_TSP(Solution* solution, std::vector<Vertex*>* cluster, 
 		// Verify that the list is correct
 		if((totalPath.front() != depot_index) || (totalPath.back() != terminal_index)) {
 			// Something went wrong...
-			try_again = true;
 			multiplier *= 10;
+			if(multiplier < DBL_MAX) {
+				try_again = true;
+			}
+			else {
+				// Just give up...
+				solution->m_bFeasible = false;
+				return;
+			}
 		}
 		else {
 			// It worked!

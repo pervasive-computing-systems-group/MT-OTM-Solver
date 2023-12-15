@@ -982,32 +982,39 @@ void Solution::PrintAMPLData() {
 
 // Prints out the data to be used in the TSPLIB file format for the LKH solver
 void Solution::PrintLKHData() {
-    printf("Creating LKH Data Files\n");
+	if(DEBUG_SOLUTION)
+		printf("Creating LKH Data Files\n");
 
 	// Print solver parameter file
-    printf(" Creating parameter file\n");
+	if(DEBUG_SOLUTION)
+		printf(" Creating parameter file\n");
 	FILE * pParFile;
 	char buff1[100];
-    sprintf(buff1, "FixedHPP.par");
-    printf("  %s\n", buff1);
-    pParFile = fopen(buff1, "w");
+	sprintf(buff1, "FixedHPP.par");
+	if(DEBUG_SOLUTION)
+		printf("  %s\n", buff1);
+	pParFile = fopen(buff1, "w");
 
 	fprintf(pParFile, "PROBLEM_FILE = FixedHPP.tsp\n");
 	fprintf(pParFile, "COMMENT Fixed Hamiltonian Path Problem\n");
 	fprintf(pParFile, "TOUR_FILE = LKH_output.dat\n");
 
-    printf("  Done!\n");
+	if(DEBUG_SOLUTION)
+		printf("  Done!\n");
 	fclose(pParFile);
 
 	// Print node data to file
-    printf(" Creating node data file\n");
+	if(DEBUG_SOLUTION)
+		printf(" Creating node data file\n");
 	FILE * pDataFile;
 	char buff2[100];
-    sprintf(buff2, "FixedHPP.tsp");
-    printf("  %s\n", buff2);
-    pDataFile = fopen(buff2, "w");
+	sprintf(buff2, "FixedHPP.tsp");
+	if(DEBUG_SOLUTION)
+		printf("  %s\n", buff2);
+	pDataFile = fopen(buff2, "w");
 
-    printf("  Adding graph specification data\n");
+	if(DEBUG_SOLUTION)
+		printf("  Adding graph specification data\n");
 	fprintf(pDataFile, "NAME : FixedHPP \n");
 	fprintf(pDataFile, "COMMENT : Fixed Hamiltonian Path Problem \n");
 	fprintf(pDataFile, "TYPE : TSP \n");
@@ -1015,7 +1022,8 @@ void Solution::PrintLKHData() {
 	fprintf(pDataFile, "EDGE_WEIGHT_TYPE : EXPLICIT \n");
 	fprintf(pDataFile, "EDGE_WEIGHT_FORMAT : FULL_MATRIX\n");
 
-    printf("  Adding NxN weights matrix\n");
+	if(DEBUG_SOLUTION)
+		printf("  Adding NxN weights matrix\n");
 	fprintf(pDataFile, "EDGE_WEIGHT_SECTION\n");
 	for(int i = 0; i < m_nN; i++) {
 		for(int j = 0; j < m_nN; j++) {
@@ -1024,26 +1032,31 @@ void Solution::PrintLKHData() {
 		fprintf(pDataFile, "\n");
 	}
 
-    printf("  Done!\n");
+	if(DEBUG_SOLUTION)
+		printf("  Done!\n");
 	fprintf(pDataFile, "EOF\n");
 	fclose(pDataFile);
 }
 
 // Prints out the data to be used in the TSPLIB file format for the LKH solver for the vertices in lst
 void Solution::PrintLKHData(std::vector<Vertex*> &lst, double multiplier) {
-	printf("Creating LKH Data Files\n");
+	if(DEBUG_SOLUTION)
+		printf("Creating LKH Data Files\n");
 
 	// Mark which vertices are the depot and terminal (assumed to be last and second to last)
 	int terminal_id= lst.at(lst.size()-1)->nID;
 	int depot_id = lst.at(lst.size()-2)->nID;
-	printf(" Depot: %d, Terminal: %d\n", depot_id, terminal_id);
+	if(DEBUG_SOLUTION)
+		printf(" Depot: %d, Terminal: %d, Multiplier: %f\n", depot_id, terminal_id, multiplier);
 
 	// Print solver parameter file
-	printf(" Creating parameter file\n");
+	if(DEBUG_SOLUTION)
+		printf(" Creating parameter file\n");
 	FILE * pParFile;
 	char buff1[100];
 	sprintf(buff1, "FixedHPP.par");
-	printf("  %s\n", buff1);
+	if(DEBUG_SOLUTION)
+		printf("  %s\n", buff1);
 	pParFile = fopen(buff1, "w");
 
 	fprintf(pParFile, "PROBLEM_FILE = FixedHPP.tsp\n");
@@ -1051,18 +1064,22 @@ void Solution::PrintLKHData(std::vector<Vertex*> &lst, double multiplier) {
 	fprintf(pParFile, "TOUR_FILE = LKH_output.dat\n");
 	fprintf(pParFile, "TRACE_LEVEL = 0\n");
 
-	printf("  Done!\n");
+	if(DEBUG_SOLUTION)
+		printf("  Done!\n");
 	fclose(pParFile);
 
 	// Print node data to file
-	printf(" Creating node data file\n");
+	if(DEBUG_SOLUTION)
+		printf(" Creating node data file\n");
 	FILE * pDataFile;
 	char buff2[100];
 	sprintf(buff2, "FixedHPP.tsp");
-	printf("  %s\n", buff2);
+	if(DEBUG_SOLUTION)
+		printf("  %s\n", buff2);
 	pDataFile = fopen(buff2, "w");
 
-	printf("  Adding graph specification data\n");
+	if(DEBUG_SOLUTION)
+		printf("  Adding graph specification data\n");
 	fprintf(pDataFile, "NAME : FixedHPP \n");
 	fprintf(pDataFile, "COMMENT : Fixed Hamiltonian Path Problem \n");
 	fprintf(pDataFile, "TYPE : TSP \n");
@@ -1070,7 +1087,8 @@ void Solution::PrintLKHData(std::vector<Vertex*> &lst, double multiplier) {
 	fprintf(pDataFile, "EDGE_WEIGHT_TYPE : EXPLICIT \n");
 	fprintf(pDataFile, "EDGE_WEIGHT_FORMAT : FULL_MATRIX\n");
 
-	printf("  Adding NxN weights matrix\n");
+	if(DEBUG_SOLUTION)
+		printf("  Adding NxN weights matrix\n");
 	fprintf(pDataFile, "EDGE_WEIGHT_SECTION\n");
 	for(Vertex* v : lst) {
 		for(Vertex* u : lst) {
@@ -1089,7 +1107,8 @@ void Solution::PrintLKHData(std::vector<Vertex*> &lst, double multiplier) {
 		fprintf(pDataFile, "\n");
 	}
 
-	printf("  Done!\n");
+	if(DEBUG_SOLUTION)
+		printf("  Done!\n");
 	fprintf(pDataFile, "EOF\n");
 	fclose(pDataFile);
 }
